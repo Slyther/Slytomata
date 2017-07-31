@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + "DFA" if globalProperties["isDfa"] else "NFA"))
         self.label_3.setText(_translate("MainWindow", "Origen"))
         self.label_2.setText(_translate("MainWindow", "Destino"))
         self.label_4.setText(_translate("MainWindow", "Transicion"))

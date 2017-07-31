@@ -27,10 +27,6 @@ class Node(QtWidgets.QLabel):
         return toReturn
 
     def __setstate__(self, state):
-        #self.name = state["name"]
-        #self.isInitialState = state["isInitialState"]
-        #self.isAcceptanceState = state["isAcceptanceState"]
-        #self.pos = state["pos"]
         self.__init__(globalProperties["drawArea"], state["pos"], state["name"], state["isAcceptanceState"], state["isInitialState"])
 
     def drawNode(self, paintEvent):
