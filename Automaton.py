@@ -1,4 +1,3 @@
-
 class Dfa:
     def __init__(self, start, finals, transitions):
         self.start = start

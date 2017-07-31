@@ -94,6 +94,9 @@ class Ui_MainWindow(object):
         self.removeTransitionButton.mousePressEvent = self.removeTransition
         self.drawArea.setContextMenuPolicy(Qt.CustomContextMenu)
         self.drawArea.customContextMenuRequested.connect(self.showContextMenu)
+        self.actionOpen.triggered.connect(self.loadFromFile)
+        self.actionSave_As.triggered.connect(self.saveToFile)
+        self.actionSave.triggered.connect(self.saveToFile)
         QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -122,13 +125,22 @@ class Ui_MainWindow(object):
         contextMenu.addAction(action1)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
-    def saveToFile(self, filename):
-        pickle.dump(globalProperties, open(filename, "wb"))
+    def saveToFile(self, event):
+        fileName = QFileDialog.getSaveFileName(self.drawArea,
+         "Save Automaton to File", "/", "Automaton Files (*.atm)")
+        if fileName:
+            automanat = globalProperties["isDfa"]
+            with open(fileName[0], 'wb') as handle:
+                pickle.dump(globalProperties, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            #pickle.dump(globalProperties, open(fileName, "wb"))
     
-    def loadFromFile(self, filename):
+    def loadFromFile(self, event):
         global globalProperties
-        globalProperties = pickle.load(open(filename, "rb"))
-        self.drawArea.update()
+        fileName = QFileDialog.getOpenFileName(self.drawArea,
+         "Save Automaton to File", "/", "Automaton Files (*.atm)")
+        if fileName:
+            globalProperties = pickle.load(open(fileName[0], "rb"))
+            self.drawArea.update()
 
     def switchAutomatonType(self, event):
         globalProperties["isDfa"] = not globalProperties["isDfa"]
