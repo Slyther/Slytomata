@@ -8,6 +8,7 @@ from Automaton import *
 from Node import Node
 from random import randrange
 import math
+import pickle
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -44,15 +45,6 @@ class Ui_MainWindow(object):
         self.removeTransitionButton.setObjectName("removeTransitionButton")
         self.horizontalLayout_2.addWidget(self.removeTransitionButton)
         self.gridLayout.addLayout(self.horizontalLayout_2, 4, 0, 1, 1)
-        self.verticalLayout_2 = QVBoxLayout()
-        self.verticalLayout_2.setSizeConstraint(QLayout.SetMaximumSize)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.drawArea = QWidget(self.centralwidget)
-        self.drawArea.setObjectName("drawArea")
-        self.drawArea.setStyleSheet('QWidget#drawArea {color: white}')
-        self.drawArea.paintEvent = self.paintDrawArea
-        self.verticalLayout_2.addWidget(self.drawArea)
-        self.gridLayout.addLayout(self.verticalLayout_2, 6, 0, 1, 1)
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setSizeConstraint(QLayout.SetMinimumSize)
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -66,12 +58,35 @@ class Ui_MainWindow(object):
         self.evaluateButton.setObjectName("evaluateButton")
         self.horizontalLayout.addWidget(self.evaluateButton)
         self.gridLayout.addLayout(self.horizontalLayout, 3, 0, 1, 1)
+        self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.setSizeConstraint(QLayout.SetMaximumSize)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.drawArea = QWidget(self.centralwidget)
+        self.drawArea.setObjectName("drawArea")
+        self.drawArea.setStyleSheet('QWidget#drawArea {color: white}')
+        self.drawArea.paintEvent = self.paintDrawArea
+        self.verticalLayout_2.addWidget(self.drawArea)
+        self.gridLayout.addLayout(self.verticalLayout_2, 6, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QMenuBar(MainWindow)
-        self.menubar.setGeometry(QRect(0, 0, 800, 26))
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 26))
         self.menubar.setObjectName("menubar")
+        self.menuFile = QtWidgets.QMenu(self.menubar)
+        self.menuFile.setObjectName("menuFile")
         MainWindow.setMenuBar(self.menubar)
-        self.chainLabel.text()
+        self.actionSave_As = QtWidgets.QAction(MainWindow)
+        self.actionSave_As.setObjectName("actionSave_As")
+        self.actionOpen = QtWidgets.QAction(MainWindow)
+        self.actionOpen.setObjectName("actionOpen")
+        self.actionSave = QtWidgets.QAction(MainWindow)
+        self.actionSave.setObjectName("actionSave")
+        self.actionNew = QtWidgets.QAction(MainWindow)
+        self.actionNew.setObjectName("actionNew")
+        self.menuFile.addAction(self.actionSave_As)
+        self.menuFile.addAction(self.actionOpen)
+        self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.actionNew)
+        self.menubar.addAction(self.menuFile.menuAction())
         self.retranslateUi(MainWindow)
         self.drawArea.mouseDoubleClickEvent = self.addNode
         self.addTransitionButton.mousePressEvent = self.addTransition
@@ -91,6 +106,14 @@ class Ui_MainWindow(object):
         self.removeTransitionButton.setText(_translate("MainWindow", "Eliminar Transicion"))
         self.label.setText(_translate("MainWindow", "Cadena: "))
         self.evaluateButton.setText(_translate("MainWindow", "Evaluar"))
+        self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.actionSave_As.setText(_translate("MainWindow", "Save As..."))
+        self.actionOpen.setText(_translate("MainWindow", "Open..."))
+        self.actionOpen.setShortcut(_translate("MainWindow", "Ctrl+O"))
+        self.actionSave.setText(_translate("MainWindow", "Save"))
+        self.actionSave.setShortcut(_translate("MainWindow", "Ctrl+S"))
+        self.actionNew.setText(_translate("MainWindow", "New"))
+        self.actionNew.setShortcut(_translate("MainWindow", "Ctrl+N"))
 
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self.drawArea)
@@ -98,6 +121,14 @@ class Ui_MainWindow(object):
         action1.triggered.connect(self.switchAutomatonType)
         contextMenu.addAction(action1)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
+
+    def saveToFile(self, filename):
+        pickle.dump(globalProperties, open(filename, "wb"))
+    
+    def loadFromFile(self, filename):
+        global globalProperties
+        globalProperties = pickle.load(open(filename, "rb"))
+        self.drawArea.update()
 
     def switchAutomatonType(self, event):
         globalProperties["isDfa"] = not globalProperties["isDfa"]
@@ -126,21 +157,12 @@ class Ui_MainWindow(object):
                 return
             automaton = Nfa(origin, finals, globalProperties["transitions"]).as_dfa()
             states = automaton.get_states()
-            print("BEFORE")
-            print("States: ")
-            print(states)
-            print("Nodes: ")
-            print(globalProperties["nodes"])
-            print("Transitions: ")
-            print(globalProperties["transitions"])
-            print("Automaton Transitions: ")
-            print(automaton.transitions)
-            while(globalProperties["nodes"]):
+            while globalProperties["nodes"]:
                 n = globalProperties["nodes"].pop()
                 n.removeNode(None)
             for state in states:
-                pos = QPoint(randrange(0,self.drawArea.rect().width()), randrange(0,self.drawArea.rect().height()))
-                globalProperties["nodes"].append(Node(self.drawArea, pos, state,state in automaton.finals, automaton.start == state))
+                pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
+                globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
             globalProperties["transitions"] = automaton.transitions
             next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
             nodesToDelete = []
@@ -154,18 +176,9 @@ class Ui_MainWindow(object):
                         nodesToDelete.append(node)
                 except StopIteration:
                     pass
-            while(nodesToDelete):
+            while nodesToDelete:
                 n = nodesToDelete.pop()
                 n.removeNode(None)
-            print("AFTER")
-            print("States: ")
-            print(states)
-            print("Nodes: ")
-            print(globalProperties["nodes"])
-            print("Transitions: ")
-            print(globalProperties["transitions"])
-            print("Automaton Transitions: ")
-            print(automaton.transitions)
             self.drawArea.update()
 
     def updateNodesList(self):
