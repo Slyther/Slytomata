@@ -95,7 +95,7 @@ class Ui_MainWindow(object):
         self.drawArea.setContextMenuPolicy(Qt.CustomContextMenu)
         self.drawArea.customContextMenuRequested.connect(self.showContextMenu)
         self.actionOpen.triggered.connect(self.loadFromFile)
-        self.actionSave_As.triggered.connect(self.saveToFile)
+        self.actionSave_As.triggered.connect(self.saveToFileAs)
         self.actionSave.triggered.connect(self.saveToFile)
         QMetaObject.connectSlotsByName(MainWindow)
 
@@ -125,21 +125,36 @@ class Ui_MainWindow(object):
         contextMenu.addAction(action1)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
-    def saveToFile(self, event):
+    def saveToFileAs(self, event):
         fileName = QFileDialog.getSaveFileName(self.drawArea,
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
-        if fileName:
-            automanat = globalProperties["isDfa"]
-            with open(fileName[0], 'wb') as handle:
+        globalProperties["fileURL"] = fileName[0]
+        if globalProperties.get("fileURL"):
+            with open(globalProperties["fileURL"], 'wb') as handle:
+                if globalProperties.get("drawArea"):
+                    del globalProperties["drawArea"]
                 pickle.dump(globalProperties, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            #pickle.dump(globalProperties, open(fileName, "wb"))
     
+    def saveToFile(self, event):
+        if globalProperties.get("fileURL"):
+            with open(globalProperties["fileURL"], 'wb') as handle:
+                if globalProperties.get("drawArea"):
+                    del globalProperties["drawArea"]
+                pickle.dump(globalProperties, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            self.saveToFileAs(event)
+
     def loadFromFile(self, event):
         global globalProperties
         fileName = QFileDialog.getOpenFileName(self.drawArea,
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
         if fileName:
-            globalProperties = pickle.load(open(fileName[0], "rb"))
+            globalProperties["drawArea"] = self.drawArea
+            localProperties = pickle.load(open(fileName[0], "rb"))
+            globalProperties = localProperties #seems redundant, but drawArea in globalProperties needs to exist during pickle load
+            globalProperties["fileURL"] = fileName[0]
+            for node in globalProperties["nodes"]:
+                node.setParent(self.drawArea)
             self.drawArea.update()
 
     def switchAutomatonType(self, event):
