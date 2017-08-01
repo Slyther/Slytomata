@@ -14,6 +14,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 600)
+        self.MainWindow = MainWindow
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QGridLayout(self.centralwidget)
@@ -101,7 +102,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + "DFA" if globalProperties["isDfa"] else "NFA"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
         self.label_3.setText(_translate("MainWindow", "Origen"))
         self.label_2.setText(_translate("MainWindow", "Destino"))
         self.label_4.setText(_translate("MainWindow", "Transicion"))
@@ -149,6 +150,9 @@ class Ui_MainWindow(object):
         fileName = QFileDialog.getOpenFileName(self.drawArea,
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
         if fileName:
+            while globalProperties["nodes"]:
+                node = globalProperties["nodes"].pop()
+                node.removeNode(None)
             globalProperties["drawArea"] = self.drawArea
             localProperties = pickle.load(open(fileName[0], "rb"))
             globalProperties = localProperties #seems redundant, but drawArea in globalProperties needs to exist during pickle load
@@ -160,6 +164,7 @@ class Ui_MainWindow(object):
     def switchAutomatonType(self, event):
         globalProperties["isDfa"] = not globalProperties["isDfa"]
         self.translateAutomaton()
+        self.drawArea.update()
 
     def translateAutomaton(self):
         if globalProperties["isDfa"]:
@@ -191,7 +196,10 @@ class Ui_MainWindow(object):
                 pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
                 globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
             globalProperties["transitions"] = automaton.transitions
-            next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
+            try:
+                next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
+            except StopIteration:
+                pass
             nodesToDelete = []
             for node in globalProperties["nodes"]:
                 try:
@@ -310,6 +318,7 @@ class Ui_MainWindow(object):
         p.drawLine(self.drawArea.width(), 0, self.drawArea.width()-1, self.drawArea.height()-1)
         p.drawLine(0, self.drawArea.height(), self.drawArea.width()-1, self.drawArea.height()-1)
         self.drawTransitions(p)
+        self.retranslateUi(self.MainWindow)
 
     def drawTransitions(self, p: QPainter):
         p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
@@ -322,12 +331,21 @@ class Ui_MainWindow(object):
                     except Exception:
                         pass
                     p.drawLine(originNode.pos, destinationNode.pos)
+                    path = QPainterPath()
+                    if(originNode.name == destinationNode.name):
+                        p.drawEllipse(originNode.pos-QPoint(25, 0), 30, 10)
+                        p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
+                    else:
+                        p.drawLine(originNode.pos, destinationNode.pos)
+                        p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
+                    #path.arcMoveTo(QRectF(originNode.pos, destinationNode.pos),20)
+                    #path.arcTo(QRectF(destinationNode.pos, originNode.pos),20, 90)
+                    #p.drawArc(QPoint(originNode.pos().x+25, originNode.pos().y+25), QPoint(destinationNode.pos().x+25, destinationNode.pos().y+25) , 45, 45)
                     #line = QLine(originNode.pos, destinationNode.pos)
                     # angle = acos(line().dx() / line().length())
                     # if (line().dy() >= 0):
                     #     angle = (Pi * 2) - angle
                     # p.drawEllipse(destinationNode.pos-QPoint(50, 50), 5, 5)
-                    p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
 
 if __name__ == "__main__":
     import sys
