@@ -17,6 +17,9 @@ class Node(QtWidgets.QLabel):
         self.show()
         self.raise_()
         self.paintEvent = self.drawNode
+        self.mousePressEvent = self.nodePressed
+        self.mouseMoveEvent = self.nodeMoved
+        self.mouseReleaseEvent = self.nodeReleased
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
         self.update()
@@ -41,6 +44,15 @@ class Node(QtWidgets.QLabel):
             p.drawEllipse(30, 30, 40, 40)
         p.drawText(self.rect(), Qt.AlignCenter, self.name)
 
+    def nodePressed(self, event):
+        print(event)
+
+    def nodeMoved(self, event):
+        print(event)
+
+    def nodeReleased(self, event):
+        print(event)
+
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self)
         action1 = QAction("Seleccionar como Estado Inicial" if not self.isInitialState else "Quitar como Estado Inicial", self)
@@ -49,6 +61,9 @@ class Node(QtWidgets.QLabel):
         action2 = QAction("Sleccionar como Estado de Aceptacion" if not self.isAcceptanceState else "Quitar como Estado de Aceptacion", self)
         action2.triggered.connect(self.setAcceptanceState)
         contextMenu.addAction(action2)
+        action4 = QAction("Editar Nodo", self)
+        action4.triggered.connect(self.editNode)
+        contextMenu.addAction(action4)
         action3 = QAction("Eliminar Nodo", self)
         action3.triggered.connect(self.removeNode)
         contextMenu.addAction(action3)
@@ -70,20 +85,36 @@ class Node(QtWidgets.QLabel):
         self.isAcceptanceState = not self.isAcceptanceState
         self.update()
 
+    def editNode(self, event):
+        text = QInputDialog.getText(self, "Modificar Nodo" + self.name,
+                                         "Ingrese nuevo nombre:", QLineEdit.Normal,
+                                         "")
+        if text[1]:
+            try:
+                next(node for node in globalProperties["nodes"] if node.name == text[1])
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("Error!")
+                msgBox.setText('Ya existe un nodo con ese nombre!')
+                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+                ret = msgBox.exec_()
+                return
+            except StopIteration:
+                for origin, transitionDict in globalProperties["transitions"].items():
+                    for transitionName, destinations in transitionDict.items():
+                        for destination in destinations:
+                            if origin == self.name:
+                                dest = next(node for node in globalProperties["nodes"] if node.name == destination)
+                                modifyTransition(self, dest, transitionName, text[0], "origin")
+                            elif destination == self.name:
+                                orig = next(node for node in globalProperties["nodes"] if node.name == origin)
+                                modifyTransition(orig, self, transitionName, text[0], "destination")
+                self.name = text[0]
+                self.update()
+
+
     def removeNode(self, event):
-        if self.name in globalProperties["transitions"]:
-            del globalProperties["transitions"][self.name]
-        entriesToRemove = {}
-        for origin, transitionDict in globalProperties["transitions"].items():
-            for transitionName, destinations in transitionDict.items():
-                newTrans = [destination for destination in destinations if destination != self.name]
-                if(len(newTrans) == 0):
-                    entriesToRemove[origin] = transitionName
-                globalProperties["transitions"][origin][transitionName] = newTrans
-        for origin, transitionName in entriesToRemove.items():
-            del globalProperties["transitions"][origin][transitionName]
-        for i, node in enumerate(globalProperties["nodes"]):
-            if self.name == node.name:
-                del globalProperties["nodes"][i]
-                break
+        for node in globalProperties["nodes"]:
+            deleteTransition(self.name, node.name, "")
+            deleteTransition(node.name, self.name, "")
+        globalProperties["nodes"] = [node for node in globalProperties["nodes"] if node.name != self.name]
         self.hide()

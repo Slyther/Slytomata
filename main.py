@@ -252,7 +252,7 @@ class Ui_MainWindow(object):
                 msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
                 ret = msgBox.exec_()
                 return
-        createTransition(origin, destination, self.transitionNameTextBox.text())
+        createTransition(origin.name, destination.name, self.transitionNameTextBox.text())
         self.drawArea.update()
 
     def removeTransition(self, event):
@@ -267,7 +267,7 @@ class Ui_MainWindow(object):
                 destination = node
                 break
         if origin and destination:
-            foundTransition = deleteTransition(origin, destination, self.transitionNameTextBox.text())
+            foundTransition = deleteTransition(origin.name, destination.name, self.transitionNameTextBox.text())
             if not foundTransition:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Error!")
@@ -318,7 +318,8 @@ class Ui_MainWindow(object):
         p.drawLine(self.drawArea.width(), 0, self.drawArea.width()-1, self.drawArea.height()-1)
         p.drawLine(0, self.drawArea.height(), self.drawArea.width()-1, self.drawArea.height()-1)
         self.drawTransitions(p)
-        self.retranslateUi(self.MainWindow)
+        _translate = QCoreApplication.translate
+        self.MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
 
     def drawTransitions(self, p: QPainter):
         p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
