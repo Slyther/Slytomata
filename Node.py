@@ -71,7 +71,7 @@ class Node(QtWidgets.QLabel):
 
     def setInitialState(self, event):
         for node in globalProperties["nodes"]:
-            if node.isInitialState:
+            if node.isInitialState and node.name != self.name:
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Error!")
                 msgBox.setText('No puede haber mas de un estado de aceptacion!')
@@ -104,10 +104,10 @@ class Node(QtWidgets.QLabel):
                         for destination in destinations:
                             if origin == self.name:
                                 dest = next(node for node in globalProperties["nodes"] if node.name == destination)
-                                modifyTransition(self, dest, transitionName, text[0], "origin")
+                                modifyTransition(self.name, dest.name, transitionName, text[0], "origin")
                             elif destination == self.name:
                                 orig = next(node for node in globalProperties["nodes"] if node.name == origin)
-                                modifyTransition(orig, self, transitionName, text[0], "destination")
+                                modifyTransition(orig.name, self.name, transitionName, text[0], "destination")
                 self.name = text[0]
                 self.update()
 
@@ -117,4 +117,5 @@ class Node(QtWidgets.QLabel):
             deleteTransition(self.name, node.name, "")
             deleteTransition(node.name, self.name, "")
         globalProperties["nodes"] = [node for node in globalProperties["nodes"] if node.name != self.name]
+        self.parentWidget().update()
         self.hide()
