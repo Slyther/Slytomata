@@ -45,6 +45,9 @@ class Ui_MainWindow(object):
         self.removeTransitionButton = QtWidgets.QPushButton(self.centralwidget)
         self.removeTransitionButton.setObjectName("removeTransitionButton")
         self.horizontalLayout_2.addWidget(self.removeTransitionButton)
+        self.modifyTransitionButton = QtWidgets.QPushButton(self.centralwidget)
+        self.modifyTransitionButton.setObjectName("modifyTransitionButton")
+        self.horizontalLayout_2.addWidget(self.modifyTransitionButton)
         self.gridLayout.addLayout(self.horizontalLayout_2, 4, 0, 1, 1)
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setSizeConstraint(QLayout.SetMinimumSize)
@@ -91,6 +94,7 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         self.drawArea.mouseDoubleClickEvent = self.addNode
         self.addTransitionButton.mousePressEvent = self.addTransition
+        self.modifyTransitionButton.mousePressEvent = self.modifyTransition
         self.evaluateButton.mousePressEvent = self.evaluate
         self.removeTransitionButton.mousePressEvent = self.removeTransition
         self.drawArea.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -108,6 +112,7 @@ class Ui_MainWindow(object):
         self.label_4.setText(_translate("MainWindow", "Transicion"))
         self.addTransitionButton.setText(_translate("MainWindow", "Agregar Transicion"))
         self.removeTransitionButton.setText(_translate("MainWindow", "Eliminar Transicion"))
+        self.modifyTransitionButton.setText(_translate("MainWindow", "Modificar Transicion"))
         self.label.setText(_translate("MainWindow", "Cadena: "))
         self.evaluateButton.setText(_translate("MainWindow", "Evaluar"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
@@ -233,49 +238,30 @@ class Ui_MainWindow(object):
         globalProperties["nodes"].append(Node(parentWidget, pos, name))
         
     def addTransition(self, event):
-        origin = None
-        destination = None
-        for node in globalProperties["nodes"]:
-            if node.name == self.originCombo.currentText():
-                origin = node
-                break
-        for node in globalProperties["nodes"]:
-            if node.name == self.destinationCombo.currentText():
-                destination = node
-                break
-        if origin and destination:
-            values = globalProperties["transitions"].get(origin.name, {})
-            if self.transitionNameTextBox.text() in values and globalProperties["isDfa"]:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("Error!")
-                msgBox.setText('Ya existe una transicion con este valor!')
-                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-                ret = msgBox.exec_()
-                return
-        createTransition(origin.name, destination.name, self.transitionNameTextBox.text())
+        values = globalProperties["transitions"].get(self.originCombo.currentText(), {})
+        if self.transitionNameTextBox.text() in values and globalProperties["isDfa"]:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Error!")
+            msgBox.setText('Ya existe una transicion con este valor!')
+            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+            ret = msgBox.exec_()
+            return
+        createTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
         self.drawArea.update()
 
     def removeTransition(self, event):
-        origin = None
-        destination = None
-        for node in globalProperties["nodes"]:
-            if node.name == self.originCombo.currentText():
-                origin = node
-                break
-        for node in globalProperties["nodes"]:
-            if node.name == self.destinationCombo.currentText():
-                destination = node
-                break
-        if origin and destination:
-            foundTransition = deleteTransition(origin.name, destination.name, self.transitionNameTextBox.text())
-            if not foundTransition:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("Error!")
-                msgBox.setText("No existe esa transicion!")
-                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-                ret = msgBox.exec_()
-                return
+        foundTransition = deleteTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
+        if not foundTransition:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Error!")
+            msgBox.setText("No existe esa transicion!")
+            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+            ret = msgBox.exec_()
+            return
         self.drawArea.update()
+        
+    def modifyTransition(self, event):
+        print(event)
 
     def evaluate(self, event):
         finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
@@ -338,6 +324,12 @@ class Ui_MainWindow(object):
                         p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
                     else:
                         p.drawLine(originNode.pos, destinationNode.pos)
+                        rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
+                        xDiff = destinationNode.pos.x() - originNode.pos.x()
+                        yDiff = destinationNode.pos.y() - originNode.pos.y()
+                        startAngle = (math.atan2(-yDiff, xDiff) * 180.0 / math.pi) * 16.0
+                        spanAngle = 180.0 * 16.0
+                        p.drawArc(rectangle, startAngle, spanAngle)
                         p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
                     #path.arcMoveTo(QRectF(originNode.pos, destinationNode.pos),20)
                     #path.arcTo(QRectF(destinationNode.pos, originNode.pos),20, 90)
@@ -347,6 +339,7 @@ class Ui_MainWindow(object):
                     # if (line().dy() >= 0):
                     #     angle = (Pi * 2) - angle
                     # p.drawEllipse(destinationNode.pos-QPoint(50, 50), 5, 5)
+                    
 
 if __name__ == "__main__":
     import sys

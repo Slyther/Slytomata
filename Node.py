@@ -81,9 +81,7 @@ class Node(QtWidgets.QLabel):
         self.update()
 
     def editNode(self, event):
-        text = QInputDialog.getText(self, "Modificar Nodo" + self.name,
-                                         "Ingrese nuevo nombre:", QLineEdit.Normal,
-                                         "")
+        text = QInputDialog.getText(self, "Modificar Nodo" + self.name, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
         if text[1]:
             try:
                 next(node for node in globalProperties["nodes"] if node.name == text[1])
@@ -105,7 +103,6 @@ class Node(QtWidgets.QLabel):
                                 modifyTransition(orig.name, self.name, transitionName, text[0], "destination")
                 self.name = text[0]
                 self.update()
-
 
     def removeNode(self, event):
         for node in globalProperties["nodes"]:
