@@ -12,14 +12,12 @@ class Node(QtWidgets.QLabel):
         self.name = name
         self.isInitialState = isInitialState
         self.isAcceptanceState = isAcceptanceState
-        self.setFixedSize(100, 100)
-        self.move(self.mapToParent(self.pos - QPoint(50, 50)))
+        self.setFixedSize(53, 53)
+        self.move(self.mapToParent(self.pos - self.rect().center()))
         self.show()
         self.raise_()
         self.paintEvent = self.drawNode
-        self.mousePressEvent = self.nodePressed
         self.mouseMoveEvent = self.nodeMoved
-        self.mouseReleaseEvent = self.nodeReleased
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
         self.update()
@@ -39,20 +37,17 @@ class Node(QtWidgets.QLabel):
             p.setBrush(QBrush(QColor(64, 128, 64)))
         else:
             p.setBrush(QBrush(QColor(128, 128, 128)))
-        p.drawEllipse(25, 25, 50, 50)
+        p.drawEllipse(self.rect().center(), 25, 25)
         if self.isAcceptanceState:
-            p.drawEllipse(30, 30, 40, 40)
+            p.drawEllipse(self.rect().center(), 20, 20)
         p.drawText(self.rect(), Qt.AlignCenter, self.name)
 
-    def nodePressed(self, event):
-        print(event)
-
     def nodeMoved(self, event):
-        print(event)
-
-    def nodeReleased(self, event):
-        print(event)
-
+        self.pos = self.mapToParent(event.pos())
+        self.move(self.pos - self.rect().center())
+        self.raise_()
+        self.parentWidget().update()
+        
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self)
         action1 = QAction("Seleccionar como Estado Inicial" if not self.isInitialState else "Quitar como Estado Inicial", self)
