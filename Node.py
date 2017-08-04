@@ -95,12 +95,13 @@ class Node(QtWidgets.QLabel):
                 for origin, transitionDict in globalProperties["transitions"].items():
                     for transitionName, destinations in transitionDict.items():
                         for destination in destinations:
-                            if origin == self.name:
-                                dest = next(node for node in globalProperties["nodes"] if node.name == destination)
-                                modifyTransition(self.name, dest.name, transitionName, text[0], "origin")
+                            if origin == self.name and destination == self.name:
+                                modifyTransition(self.name, self.name, transitionName, text[0], "origin")
+                                modifyTransition(text[0], self.name, transitionName, text[0], "destination")
+                            elif origin == self.name:
+                                modifyTransition(self.name, destination, transitionName, text[0], "origin")
                             elif destination == self.name:
-                                orig = next(node for node in globalProperties["nodes"] if node.name == origin)
-                                modifyTransition(orig.name, self.name, transitionName, text[0], "destination")
+                                modifyTransition(origin, self.name, transitionName, text[0], "destination")
                 self.name = text[0]
                 self.update()
 

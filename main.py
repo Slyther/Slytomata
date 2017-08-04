@@ -9,6 +9,7 @@ from Node import Node
 from random import randrange
 import math
 import pickle
+import copy
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -134,12 +135,9 @@ class Ui_MainWindow(object):
     def saveToFileAs(self, event):
         fileName = QFileDialog.getSaveFileName(self.drawArea,
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
-        globalProperties["fileURL"] = fileName[0]
-        if globalProperties.get("fileURL"):
-            with open(globalProperties["fileURL"], 'wb') as handle:
-                if globalProperties.get("drawArea"):
-                    del globalProperties["drawArea"]
-                pickle.dump(globalProperties, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if fileName[1]:
+            globalProperties["fileURL"] = fileName[0]
+            saveToFile(event)
     
     def saveToFile(self, event):
         if globalProperties.get("fileURL"):
@@ -154,13 +152,13 @@ class Ui_MainWindow(object):
         global globalProperties
         fileName = QFileDialog.getOpenFileName(self.drawArea,
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
-        if fileName:
+        if fileName[1]:
             while globalProperties["nodes"]:
                 node = globalProperties["nodes"].pop()
                 node.removeNode(None)
             globalProperties["drawArea"] = self.drawArea
             localProperties = pickle.load(open(fileName[0], "rb"))
-            globalProperties = localProperties #seems redundant, but drawArea in globalProperties needs to exist during pickle load
+            globalProperties.update(localProperties) #seems redundant, but drawArea in globalProperties needs to exist during pickle load
             globalProperties["fileURL"] = fileName[0]
             for node in globalProperties["nodes"]:
                 node.setParent(self.drawArea)
@@ -297,12 +295,9 @@ class Ui_MainWindow(object):
     def paintDrawArea(self, paintEvent):
         self.updateNodesList()
         p = QPainter(self.drawArea)
-        p.fillRect(QRect(0, 0, self.drawArea.width(), self.drawArea.height()), QBrush(QColor(255, 255, 255)))
-        p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
-        p.drawLine(0, 0, self.drawArea.width(), 0)
-        p.drawLine(0, 0, 0, self.drawArea.height())
-        p.drawLine(self.drawArea.width(), 0, self.drawArea.width()-1, self.drawArea.height()-1)
-        p.drawLine(0, self.drawArea.height(), self.drawArea.width()-1, self.drawArea.height()-1)
+        p.fillRect(self.drawArea.rect(), QBrush(QColor(255, 255, 255)))
+        p.setPen(QPen(QBrush(QColor(0, 0, 0)), 2))
+        p.drawRect(self.drawArea.rect())
         self.drawTransitions(p)
         _translate = QCoreApplication.translate
         self.MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
@@ -313,10 +308,7 @@ class Ui_MainWindow(object):
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
-                    try:
-                        destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
-                    except Exception:
-                        pass
+                    destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
                     p.drawLine(originNode.pos, destinationNode.pos)
                     path = QPainterPath()
                     if(originNode.name == destinationNode.name):
@@ -328,8 +320,9 @@ class Ui_MainWindow(object):
                         xDiff = destinationNode.pos.x() - originNode.pos.x()
                         yDiff = destinationNode.pos.y() - originNode.pos.y()
                         startAngle = (math.atan2(-yDiff, xDiff) * 180.0 / math.pi) * 16.0
-                        spanAngle = 180.0 * 16.0
+                        spanAngle = 120.0 * 16.0
                         p.drawArc(rectangle, startAngle, spanAngle)
+                        p.drawRect(rectangle)
                         p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
                     #path.arcMoveTo(QRectF(originNode.pos, destinationNode.pos),20)
                     #path.arcTo(QRectF(destinationNode.pos, originNode.pos),20, 90)
