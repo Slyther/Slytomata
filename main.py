@@ -130,6 +130,10 @@ class Ui_MainWindow(object):
         action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
         action1.triggered.connect(self.switchAutomatonType)
         contextMenu.addAction(action1)
+        if not globalProperties["isDfa"]:
+            action2 = QAction("Colapsar NFA", self.drawArea)
+            action2.triggered.connect(self.collapseAutomaton)
+            contextMenu.addAction(action2)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
     def saveToFileAs(self, event):
@@ -169,6 +173,44 @@ class Ui_MainWindow(object):
         self.translateAutomaton()
         self.drawArea.update()
 
+    def collapseAutomaton(self, event):
+        try:
+            origin = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            origin = None
+        finals = [node.name for node in globalProperties["nodes"] if node.isAcceptanceState]
+        automaton = Nfa(origin, finals, globalProperties["transitions"]).clearing_epsilon()
+        self.loadAutomaton(automaton)
+
+    def loadAutomaton(self, automaton):
+        states = automaton.get_states()
+        while globalProperties["nodes"]:
+            n = globalProperties["nodes"].pop()
+            n.removeNode(None)
+        for state in states:
+            pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
+            globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
+        globalProperties["transitions"] = automaton.transitions
+        try:
+            next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
+        except StopIteration:
+            pass
+        nodesToDelete = []
+        for node in globalProperties["nodes"]:
+            try:
+                for _, transitionDict in globalProperties["transitions"].items():
+                    for _, destinations in transitionDict.items():
+                        if node.name in destinations:
+                            raise StopIteration
+                if not node.isInitialState:
+                    nodesToDelete.append(node)
+            except StopIteration:
+                pass
+        while nodesToDelete:
+            n = nodesToDelete.pop()
+            n.removeNode(None)
+        self.drawArea.update()
+
     def translateAutomaton(self):
         if globalProperties["isDfa"]:
             try:
@@ -177,33 +219,7 @@ class Ui_MainWindow(object):
                 origin = None
             finals = [node.name for node in globalProperties["nodes"] if node.isAcceptanceState]
             automaton = Nfa(origin, finals, globalProperties["transitions"]).as_dfa()
-            states = automaton.get_states()
-            while globalProperties["nodes"]:
-                n = globalProperties["nodes"].pop()
-                n.removeNode(None)
-            for state in states:
-                pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
-                globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
-            globalProperties["transitions"] = automaton.transitions
-            try:
-                next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
-            except StopIteration:
-                pass
-            nodesToDelete = []
-            for node in globalProperties["nodes"]:
-                try:
-                    for _, transitionDict in globalProperties["transitions"].items():
-                        for _, destinations in transitionDict.items():
-                            if node.name in destinations:
-                                raise StopIteration
-                    if not node.isInitialState:
-                        nodesToDelete.append(node)
-                except StopIteration:
-                    pass
-            while nodesToDelete:
-                n = nodesToDelete.pop()
-                n.removeNode(None)
-            self.drawArea.update()
+            self.loadAutomaton(automaton)
 
     def updateNodesList(self):
         self.originCombo.clear()

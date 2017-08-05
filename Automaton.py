@@ -30,11 +30,22 @@ class Nfa:
         self.finals = finals
         self.transitions = transitions
 
+    def emptyMoves(self, states):
+        temp = list(states)
+        exits = list(states)
+        while temp:
+            current = temp.pop()
+            next_exits = self.evaluateSub([current], "$")
+            temp.extend(state for state in next_exits if state not in exits)
+            exits.extend(state for state in next_exits if state not in exits)
+        return exits
+
     def evaluate(self, word):
-        current = [self.start]
+        current = self.emptyMoves([self.start])
         for c in word:
             try:
-                current = self.evaluateSub(current, c)
+                current = self.emptyMoves(self.evaluateSub(current, c))
+                print(current)
             except Exception:
                 return False
         for curr in current:
@@ -54,16 +65,20 @@ class Nfa:
     def get_states(self):
         result = []
         for origin, transitions in self.transitions.items():
-            result.append(origin)
+            if origin not in result:
+                result.append(origin)
             for _, destinies in transitions.items():
-                result.extend(destinies)
+                for destiny in destinies:
+                    if destiny not in result:
+                        result.append(destiny)
         return result
 
     def getAlphabet(self):
         alphabet = []
         for transition in self.transitions.values():
             for symbol in transition:
-                alphabet.append(symbol)
+                if symbol != "$":
+                    alphabet.append(symbol)
         return alphabet
 
     def as_dfa(self):
@@ -80,6 +95,33 @@ class Nfa:
                 destinies = self.evaluateSub(state_set, symbol)
                 new_transitions[state_set_str][symbol] = [''.join(sorted(destinies))]
         return Dfa(self.start, new_finals, new_transitions)
+
+    def clearing_epsilon(self):
+        start = self.emptyMoves([self.start])
+        states = [start]
+        temp = list(states)
+        transitions = {}
+        finals = []
+        for state in start:
+            if state in self.finals:
+                finals.append(''.join(sorted(start)))
+                break    
+        while temp:
+            current_set = temp.pop()
+            transitions[''.join(sorted(current_set))] = {}
+            for symbol in self.getAlphabet():
+                new_set = self.emptyMoves(self.evaluateSub(current_set, symbol))
+                transitions[''.join(sorted(current_set))][symbol] = [''.join(sorted(new_set))]
+                for state in new_set:
+                    if state in self.finals:
+                        new_set_str = ''.join(sorted(new_set))
+                        if new_set_str not in finals:
+                            finals.append(new_set_str)
+                        break
+                if new_set not in states:
+                    states.append(new_set)
+                    temp.append(new_set)
+        return Nfa(''.join(sorted(start)), finals, transitions)
 
     def superset(self, states):
         from itertools import chain, combinations
