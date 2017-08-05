@@ -15,16 +15,16 @@ def createTransition(origin, destination, transitionName):
 
 def deleteTransition(origin, destination, transitionName):
     try:
-        if origin == "":
-            for orig, _ in globalProperties["transitions"].items():
-                globalProperties["transitions"][orig][transitionName] = [x for x in globalProperties["transitions"][orig][transitionName] if x != destination]
-                globalProperties["transitions"][orig] = dict((x, v) for x, v in globalProperties["transitions"][orig].items() if v)
-        elif destination == "":
-            globalProperties["transitions"][origin] = dict((key, value) for key, value in globalProperties["transitions"][origin] if value and transitionName != key)
-        elif transitionName == "":
+        if transitionName == "":
             for trans, _ in globalProperties["transitions"][origin].items():
                 globalProperties["transitions"][origin][trans] = [x for x in globalProperties["transitions"][origin][trans] if x != destination]
                 globalProperties["transitions"][origin] = dict((x, v) for x, v in globalProperties["transitions"][origin].items() if v)
+        elif destination == "":
+            globalProperties["transitions"][origin] = dict((key, value) for key, value in globalProperties["transitions"][origin] if value and transitionName != key)
+        elif origin == "":
+            for orig, _ in globalProperties["transitions"].items():
+                globalProperties["transitions"][orig][transitionName] = [x for x in globalProperties["transitions"][orig][transitionName] if x != destination]
+                globalProperties["transitions"][orig] = dict((x, v) for x, v in globalProperties["transitions"][orig].items() if v)
         else:
             globalProperties["transitions"][origin][transitionName] = [x for x in globalProperties["transitions"][origin][transitionName] if x != destination]
             globalProperties["transitions"][origin] = dict((x, v) for x, v in globalProperties["transitions"][origin].items() if v)

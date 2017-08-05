@@ -137,7 +137,7 @@ class Ui_MainWindow(object):
          "Save Automaton to File", "/", "Automaton Files (*.atm)")
         if fileName[1]:
             globalProperties["fileURL"] = fileName[0]
-            saveToFile(event)
+            self.saveToFile(event)
     
     def saveToFile(self, event):
         if globalProperties.get("fileURL"):
@@ -174,22 +174,8 @@ class Ui_MainWindow(object):
             try:
                 origin = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
             except StopIteration:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("Error!")
-                msgBox.setText('Tiene que elegir un estado inicial!')
-                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-                ret = msgBox.exec_()
-                globalProperties["isDfa"] = not globalProperties["isDfa"]
-                return
+                origin = None
             finals = [node.name for node in globalProperties["nodes"] if node.isAcceptanceState]
-            if not finals:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("Error!")
-                msgBox.setText('Tiene que elegir por lo menos un estado estado de aceptacion!')
-                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-                ret = msgBox.exec_()
-                globalProperties["isDfa"] = not globalProperties["isDfa"]
-                return
             automaton = Nfa(origin, finals, globalProperties["transitions"]).as_dfa()
             states = automaton.get_states()
             while globalProperties["nodes"]:
@@ -259,7 +245,30 @@ class Ui_MainWindow(object):
         self.drawArea.update()
         
     def modifyTransition(self, event):
-        print(event)
+        origin = self.originCombo.currentText()
+        destination = self.destinationCombo.currentText()
+        transitionN = self.transitionNameTextBox.text()
+        values = globalProperties["transitions"].get(origin, {})
+        dests = values.get(transitionN, {})
+        if destination not in dests:
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Error!")
+            msgBox.setText('No existe una transicion con este valor!')
+            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+            ret = msgBox.exec_()
+            return
+        text = QInputDialog.getText(self.drawArea, "Modificar Transicion" + transitionN, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
+        if text[1]:
+            if text[0] in values:
+                msgBox = QMessageBox()
+                msgBox.setWindowTitle("Error!")
+                msgBox.setText('Ya existe una transicion con ese nombre!')
+                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+                ret = msgBox.exec_()
+                return
+            else:
+                modifyTransition(origin, destination, transitionN, text[0], "transitionName")
+                self.drawArea.update()
 
     def evaluate(self, event):
         finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
@@ -316,13 +325,13 @@ class Ui_MainWindow(object):
                         p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
                     else:
                         p.drawLine(originNode.pos, destinationNode.pos)
-                        rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
-                        xDiff = destinationNode.pos.x() - originNode.pos.x()
-                        yDiff = destinationNode.pos.y() - originNode.pos.y()
-                        startAngle = (math.atan2(-yDiff, xDiff) * 180.0 / math.pi) * 16.0
-                        spanAngle = 120.0 * 16.0
-                        p.drawArc(rectangle, startAngle, spanAngle)
-                        p.drawRect(rectangle)
+                        # rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
+                        # xDiff = destinationNode.pos.x() - originNode.pos.x()
+                        # yDiff = destinationNode.pos.y() - originNode.pos.y()
+                        # startAngle = (math.atan2(-yDiff, xDiff) * 180.0 / math.pi) * 16.0
+                        # spanAngle = 120.0 * 16.0
+                        # p.drawArc(rectangle, startAngle, spanAngle)
+                        # p.drawRect(rectangle)
                         p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
                     #path.arcMoveTo(QRectF(originNode.pos, destinationNode.pos),20)
                     #path.arcTo(QRectF(destinationNode.pos, originNode.pos),20, 90)
