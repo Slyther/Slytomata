@@ -328,36 +328,36 @@ class Ui_MainWindow(object):
         self.MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
 
     def drawTransitions(self, p: QPainter):
-        p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
         for origin, transitionDict in globalProperties["transitions"].items():
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
                     destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
-                    p.drawLine(originNode.pos, destinationNode.pos)
-                    path = QPainterPath()
+                    p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
                     if(originNode.name == destinationNode.name):
                         p.drawEllipse(originNode.pos-QPoint(25, 0), 30, 10)
                         p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
                     else:
-                        p.drawLine(originNode.pos, destinationNode.pos)
-                        # rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
-                        # xDiff = destinationNode.pos.x() - originNode.pos.x()
-                        # yDiff = destinationNode.pos.y() - originNode.pos.y()
-                        # startAngle = (math.atan2(-yDiff, xDiff) * 180.0 / math.pi) * 16.0
-                        # spanAngle = 120.0 * 16.0
-                        # p.drawArc(rectangle, startAngle, spanAngle)
-                        # p.drawRect(rectangle)
-                        p.drawText(QRect(originNode.pos, destinationNode.pos), Qt.AlignCenter, transitionName)
-                    #path.arcMoveTo(QRectF(originNode.pos, destinationNode.pos),20)
-                    #path.arcTo(QRectF(destinationNode.pos, originNode.pos),20, 90)
-                    #p.drawArc(QPoint(originNode.pos().x+25, originNode.pos().y+25), QPoint(destinationNode.pos().x+25, destinationNode.pos().y+25) , 45, 45)
-                    #line = QLine(originNode.pos, destinationNode.pos)
-                    # angle = acos(line().dx() / line().length())
-                    # if (line().dy() >= 0):
-                    #     angle = (Pi * 2) - angle
-                    # p.drawEllipse(destinationNode.pos-QPoint(50, 50), 5, 5)
-                    
+                        rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
+                        x0 = rectangle.center().x()
+                        y0 = rectangle.center().y()
+                        x1 = originNode.pos.x()
+                        y1 = originNode.pos.y()
+                        x2 = destinationNode.pos.x()
+                        y2 = destinationNode.pos.y()
+                        r = int(math.sqrt((x1-x0)*(x1-x0) + (y1-y0)*(y1-y0)))
+                        x = x0-r
+                        y = y0-r
+                        startAngle = (math.atan2(-(y2-y1), x2-x1) * 180.0 / math.pi) * 16.0
+                        spanAngle = 180 * 16
+                        width = 2*r
+                        height = 2*r
+                        p.drawArc(x, y, width, height, startAngle, spanAngle)
+                        centerPoint =  QPoint(x0 + r * math.cos(((startAngle/16)+90) * math.pi / 180.0), y0 - r * math.sin(((startAngle/16)+90) * math.pi / 180.0))
+                        p.drawText(centerPoint, transitionName)
+                        destinationPointer =  QPoint(x0 + r * math.cos(((startAngle/16)+13) * math.pi / 180.0), y0 - r * math.sin(((startAngle/16)+13) * math.pi / 180.0))
+                        p.setBrush(QBrush(QColor(128, 128, 128)))
+                        p.drawEllipse(destinationPointer, 5, 5)
 
 if __name__ == "__main__":
     import sys

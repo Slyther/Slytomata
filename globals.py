@@ -38,3 +38,25 @@ def modifyTransition(origin, destination, transitionName, newText, toModify):
     deleteTransition(newInfo["origin"], newInfo["destination"], newInfo["transitionName"])
     newInfo[toModify] = newText
     createTransition(newInfo["origin"], newInfo["destination"], newInfo["transitionName"])
+
+def reduceTransitions():
+    toReturn = {}
+    for origin, transitionDict in globalProperties["transitions"].items():
+        for transitionName, destinations in transitionDict.items():
+            for destination in destinations:
+                values = toReturn.get(origin, {})
+                if destination in values:
+                    vals = values[destination]
+                    if transitionName not in vals:
+                        newVals = [transitionName]
+                        newVals.extend(vals)
+                        values[destination] = newVals
+                else:
+                    values[destination] = [transitionName]
+                toReturn = values
+    for origin, destinations in toReturn.items():
+        for destination, transitions in destinations.items():
+
+            for transition in transitions:
+                print(transition)
+    return toReturn
