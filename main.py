@@ -107,7 +107,6 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
         self.label_3.setText(_translate("MainWindow", "Origen"))
         self.label_2.setText(_translate("MainWindow", "Destino"))
         self.label_4.setText(_translate("MainWindow", "Transicion"))
@@ -155,18 +154,26 @@ class Ui_MainWindow(object):
     def loadFromFile(self, event):
         global globalProperties
         fileName = QFileDialog.getOpenFileName(self.drawArea,
-         "Save Automaton to File", "/", "Automaton Files (*.atm)")
+                                               "Save Automaton to File",
+                                               "/", "Automaton Files (*.atm)")
         if fileName[1]:
             while globalProperties["nodes"]:
                 node = globalProperties["nodes"].pop()
                 node.removeNode(None)
-            globalProperties["drawArea"] = self.drawArea
-            localProperties = pickle.load(open(fileName[0], "rb"))
-            globalProperties.update(localProperties) #seems redundant, but drawArea in globalProperties needs to exist during pickle load
-            globalProperties["fileURL"] = fileName[0]
-            for node in globalProperties["nodes"]:
-                node.setParent(self.drawArea)
-            self.drawArea.update()
+            try:
+                globalProperties["drawArea"] = self.drawArea
+                localProperties = pickle.load(open(fileName[0], "rb"))
+                globalProperties.update(localProperties) #seems redundant, but drawArea in globalProperties needs to exist during pickle load
+                globalProperties["fileURL"] = fileName[0]
+                for node in globalProperties["nodes"]:
+                    node.setParent(self.drawArea)
+                self.drawArea.update()
+                return
+            except Exception:
+                if globalProperties.get("drawArea"):
+                    del globalProperties["drawArea"]
+        self.showMessage("Error!", "El archivo no se pudo cargar!")
+
 
     def switchAutomatonType(self, event):
         globalProperties["isDfa"] = not globalProperties["isDfa"]
@@ -240,11 +247,7 @@ class Ui_MainWindow(object):
     def addTransition(self, event):
         values = globalProperties["transitions"].get(self.originCombo.currentText(), {})
         if self.transitionNameTextBox.text() in values and globalProperties["isDfa"]:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error!")
-            msgBox.setText('Ya existe una transicion con este valor!')
-            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-            ret = msgBox.exec_()
+            self.showMessage("Error!", "Ya existe una transicion con este valor!")
             return
         createTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
         self.drawArea.update()
@@ -252,11 +255,7 @@ class Ui_MainWindow(object):
     def removeTransition(self, event):
         foundTransition = deleteTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
         if not foundTransition:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error!")
-            msgBox.setText("No existe esa transicion!")
-            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-            ret = msgBox.exec_()
+            self.showMessag("Error!", "No existe esa transicion!")
             return
         self.drawArea.update()
         
@@ -267,20 +266,12 @@ class Ui_MainWindow(object):
         values = globalProperties["transitions"].get(origin, {})
         dests = values.get(transitionN, {})
         if destination not in dests:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error!")
-            msgBox.setText('No existe una transicion con este valor!')
-            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-            ret = msgBox.exec_()
+            self.showMessage("Error!", "No existe una transicion con este valor!")
             return
         text = QInputDialog.getText(self.drawArea, "Modificar Transicion" + transitionN, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
         if text[1]:
             if text[0] in values:
-                msgBox = QMessageBox()
-                msgBox.setWindowTitle("Error!")
-                msgBox.setText('Ya existe una transicion con ese nombre!')
-                msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-                ret = msgBox.exec_()
+                self.showMessage("Error!", 'Ya existe una transicion con ese nombre!')
                 return
             else:
                 modifyTransition(origin, destination, transitionN, text[0], "transitionName")
@@ -289,33 +280,16 @@ class Ui_MainWindow(object):
     def evaluate(self, event):
         finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
         if not finals:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error!")
-            msgBox.setText("No hay estados de aceptacion!")
-            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-            ret = msgBox.exec_()
+            self.showMessage("Error!", "No hay estados de aceptacion!")
             return
         try:
             initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
         except StopIteration:
-            msgBox = QMessageBox()
-            msgBox.setWindowTitle("Error!")
-            msgBox.setText("No hay estado inicial!")
-            msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-            ret = msgBox.exec_()
+            self.showMessage("Error!", "No hay estado inicial!")
             return
-        dfa_transitions = {}
-        for origin, state_transitions in globalProperties["transitions"].items():
-            dfa_transitions[origin] = {}
-            for transition_value, destination in state_transitions.items():
-                dfa_transitions[origin][transition_value] = destination
         word = self.chainLabel.text()
         result = Dfa(initial, finals, globalProperties["transitions"]).evaluate(word) if globalProperties["isDfa"] else Nfa(initial, finals, globalProperties["transitions"]).evaluate(word)
-        msgBox = QMessageBox()
-        msgBox.setWindowTitle("Resultado")
-        msgBox.setText(str(result))
-        msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
-        ret = msgBox.exec_()
+        self.showMessage("Resultado", str(result))
 
     def paintDrawArea(self, paintEvent):
         self.updateNodesList()
@@ -358,6 +332,13 @@ class Ui_MainWindow(object):
                         destinationPointer =  QPoint(x0 + r * math.cos(((startAngle/16)+13) * math.pi / 180.0), y0 - r * math.sin(((startAngle/16)+13) * math.pi / 180.0))
                         p.setBrush(QBrush(QColor(128, 128, 128)))
                         p.drawEllipse(destinationPointer, 5, 5)
+
+    def showMessage(self, title, message):
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle(title)
+        msgBox.setText(message)
+        msgBox.addButton(QPushButton('Ok'), QMessageBox.YesRole)
+        msgBox.exec_()
 
 if __name__ == "__main__":
     import sys
