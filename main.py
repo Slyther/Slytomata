@@ -302,12 +302,13 @@ class Ui_MainWindow(object):
         self.MainWindow.setWindowTitle(_translate("MainWindow", "Slytomata - " + ("DFA" if globalProperties["isDfa"] else "NFA")))
 
     def drawTransitions(self, p: QPainter):
+        p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
         for origin, transitionDict in globalProperties["transitions"].items():
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
                     destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
-                    p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
+                    p.setBrush(QBrush(QColor(255, 255, 255)))
                     if(originNode.name == destinationNode.name):
                         p.drawEllipse(originNode.pos-QPoint(25, 0), 30, 10)
                         p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
