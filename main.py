@@ -62,6 +62,9 @@ class Ui_MainWindow(object):
         self.evaluateButton = QPushButton(self.centralwidget)
         self.evaluateButton.setObjectName("evaluateButton")
         self.horizontalLayout.addWidget(self.evaluateButton)
+        self.toRegexButton = QPushButton(self.centralwidget)
+        self.evaluateButton.setObjectName("toRegexButton")
+        self.horizontalLayout.addWidget(self.toRegexButton)
         self.gridLayout.addLayout(self.horizontalLayout, 3, 0, 1, 1)
         self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setSizeConstraint(QLayout.SetMaximumSize)
@@ -97,6 +100,7 @@ class Ui_MainWindow(object):
         self.addTransitionButton.mousePressEvent = self.addTransition
         self.modifyTransitionButton.mousePressEvent = self.modifyTransition
         self.evaluateButton.mousePressEvent = self.evaluate
+        self.toRegexButton.mousePressEvent = self.toRegex
         self.removeTransitionButton.mousePressEvent = self.removeTransition
         self.drawArea.setContextMenuPolicy(Qt.CustomContextMenu)
         self.drawArea.customContextMenuRequested.connect(self.showContextMenu)
@@ -115,6 +119,7 @@ class Ui_MainWindow(object):
         self.modifyTransitionButton.setText(_translate("MainWindow", "Modificar Transicion"))
         self.label.setText(_translate("MainWindow", "Cadena: "))
         self.evaluateButton.setText(_translate("MainWindow", "Evaluar"))
+        self.toRegexButton.setText(_translate("MainWindow", "Mostrar ER Equivalente"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionSave_As.setText(_translate("MainWindow", "Save As..."))
         self.actionOpen.setText(_translate("MainWindow", "Open..."))
@@ -288,8 +293,21 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial!")
             return
         word = self.chainLabel.text()
-        result = Dfa(initial, finals, globalProperties["transitions"]).evaluate(word) if globalProperties["isDfa"] else Nfa(initial, finals, globalProperties["transitions"]).evaluate(word)
+        result = Nfa(initial, finals, globalProperties["transitions"]).evaluate(word)
         self.showMessage("Resultado", str(result))
+
+    def toRegex(self, event):
+        finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        if not finals:
+            self.showMessage("Error!", "No hay estados de aceptacion!")
+            return
+        try:
+            initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            self.showMessage("Error!", "No hay estado inicial!")
+            return
+        result =  Nfa(initial, finals, globalProperties["transitions"]).regex()
+        self.showMessage("ER Equivalente", str(result))
 
     def paintDrawArea(self, paintEvent):
         self.updateNodesList()

@@ -1,29 +1,3 @@
-class Dfa:
-    def __init__(self, start, finals, transitions):
-        self.start = start
-        self.finals = finals
-        self.transitions = transitions
-
-    def evaluate(self, word):
-        current = self.start
-        for c in word:
-            try:
-                current = self.transitions[current][c][0]
-            except Exception:
-                return False
-        return current in self.finals
-
-    def get_states(self):
-        result = []
-        for origin, transitions in self.transitions.items():
-            if origin not in result:
-                result.append(origin)
-            for _, destinies in transitions.items():
-                for destiny in destinies:
-                    if destiny not in result:
-                        result.append(destiny)
-        return result
-
 class Nfa:
     def __init__(self, start, finals, transitions):
         self.start = start
@@ -94,7 +68,7 @@ class Nfa:
             for symbol in alphabet:
                 destinies = self.evaluateSub(state_set, symbol)
                 new_transitions[state_set_str][symbol] = [''.join(sorted(destinies))]
-        return Dfa(self.start, new_finals, new_transitions)
+        return Nfa(self.start, new_finals, new_transitions)
 
     def clearing_epsilon(self):
         start = self.emptyMoves([self.start])
@@ -105,7 +79,7 @@ class Nfa:
         for state in start:
             if state in self.finals:
                 finals.append(''.join(sorted(start)))
-                break    
+                break
         while temp:
             current_set = temp.pop()
             transitions[''.join(sorted(current_set))] = {}
@@ -127,3 +101,64 @@ class Nfa:
         from itertools import chain, combinations
         s = list(states)
         return set(chain.from_iterable(combinations(s, r) for r in range(len(s) + 1)))
+
+    def regex(self):
+        initial = object()
+        final = object()
+        expr = {}
+        states = [initial, final]
+        states.extend(self.get_states())
+        for x in states:
+            for y in states:
+                expr[x, y] = None
+        for x in self.get_states():
+            if x == self.start:
+                expr[initial, x] = ''
+            if x in self.finals:
+                expr[x, final] = ''
+            expr[x, x] = ''
+        for x in self.get_states():
+            for c in self.getAlphabet():
+                for y in self.transitions.get(x, {}).get(c, []):
+                    if expr[x, y]:
+                        expr[x, y] += '+' + str(c)
+                    else:
+                        expr[x, y] = str(c)
+
+        for s in self.get_states():
+            states.remove(s)
+            for x in states:
+                for y in states:
+                    if expr[x, s] is not None and expr[s, y] is not None:
+                        xsy = []
+                        if expr[x, s]:
+                            xsy += self._add_parentheses(expr[x, s])
+                        if expr[s, s]:
+                            xsy += self._add_parentheses(expr[s, s], True) + ['*']
+                        if expr[s, y]:
+                            xsy += self._add_parentheses(expr[s, y])
+                        if expr[x, y] is not None:
+                            xsy += ['+', expr[x, y] or '()']
+                        expr[x, y] = ''.join(xsy)
+        return expr[initial, final]
+
+    def _add_parentheses(self, expr, starring=False):
+        if len(expr) == 1 or (not starring and '+' not in expr):
+            return [expr]
+        elif starring and expr.endswith('+()'):
+            return ['(', expr[:-3], ')']
+        else:
+            return ['(', expr, ')']
+
+# A = buildAutomataER(DFA)
+# er = ''
+# for f in F:
+#     estadosBorrar = getEstadosBorrar(f)
+#     for estadoBorrar in estadosBorrar:
+#         tabla = buildTabla(estadoBorrar)
+#         del A[estadoBorrar]
+#         for transicion in tabla:
+#             A.append(transicion)
+#         ERf = getERfromDFABase(A)
+#         add ERf a er
+#https://en.wikipedia.org/wiki/Glushkov's_construction_algorithm
