@@ -23,8 +23,7 @@ class Node(QtWidgets.QLabel):
         self.update()
     
     def __getstate__(self):
-        toReturn = {"name":self.name, "isInitialState":self.isInitialState, "isAcceptanceState":self.isAcceptanceState,
-        "pos":self.pos}
+        toReturn = {"name":self.name, "isInitialState":self.isInitialState, "isAcceptanceState":self.isAcceptanceState, "pos":self.pos}
         return toReturn
 
     def __setstate__(self, state):
@@ -47,7 +46,7 @@ class Node(QtWidgets.QLabel):
         self.move(self.pos - self.rect().center())
         self.raise_()
         self.parentWidget().update()
-        
+
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self)
         action1 = QAction("Seleccionar como Estado Inicial" if not self.isInitialState else "Quitar como Estado Inicial", self)
@@ -84,7 +83,7 @@ class Node(QtWidgets.QLabel):
         text = QInputDialog.getText(self, "Modificar Nodo" + self.name, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
         if text[1]:
             try:
-                next(node for node in globalProperties["nodes"] if node.name == text[1])
+                next(node for node in globalProperties["nodes"] if node.name == text[0])
                 msgBox = QMessageBox()
                 msgBox.setWindowTitle("Error!")
                 msgBox.setText('Ya existe un nodo con ese nombre!')

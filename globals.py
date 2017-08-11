@@ -42,21 +42,17 @@ def modifyTransition(origin, destination, transitionName, newText, toModify):
 def reduceTransitions():
     toReturn = {}
     for origin, transitionDict in globalProperties["transitions"].items():
+        toReturn[origin] = {}
         for transitionName, destinations in transitionDict.items():
             for destination in destinations:
-                values = toReturn.get(origin, {})
-                if destination in values:
-                    vals = values[destination]
-                    if transitionName not in vals:
-                        newVals = [transitionName]
-                        newVals.extend(vals)
-                        values[destination] = newVals
-                else:
-                    values[destination] = [transitionName]
-                toReturn = values
-    for origin, destinations in toReturn.items():
-        for destination, transitions in destinations.items():
-
-            for transition in transitions:
-                print(transition)
+                transitionList = [transitionName]
+                for tn, dts in transitionDict.items():
+                    if tn == transitionName:
+                        continue
+                    for dt in dts:
+                        if dt == destination:
+                            transitionList.append(tn)
+                transitionList.sort()
+                newTransitionName = '|'.join(transitionList)
+                toReturn[origin][newTransitionName] = [destination]
     return toReturn

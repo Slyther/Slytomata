@@ -163,15 +163,13 @@ class Ui_MainWindow(object):
                                                "/", "Automaton Files (*.atm)")
         if fileName[1]:
             while globalProperties["nodes"]:
-                node = globalProperties["nodes"].pop()
+                node = next(n for n in globalProperties["nodes"]) #aqui hay un bug bien heavy lurking in the background
                 node.removeNode(None)
             try:
                 globalProperties["drawArea"] = self.drawArea
                 localProperties = pickle.load(open(fileName[0], "rb"))
-                globalProperties.update(localProperties) #seems redundant, but drawArea in globalProperties needs to exist during pickle load
+                globalProperties.update(localProperties)
                 globalProperties["fileURL"] = fileName[0]
-                for node in globalProperties["nodes"]:
-                    node.setParent(self.drawArea)
                 self.drawArea.update()
                 return
             except Exception:
@@ -250,17 +248,29 @@ class Ui_MainWindow(object):
         globalProperties["nodes"].append(Node(parentWidget, pos, name))
         
     def addTransition(self, event):
-        values = globalProperties["transitions"].get(self.originCombo.currentText(), {})
-        if self.transitionNameTextBox.text() in values and globalProperties["isDfa"]:
+        origin = self.originCombo.currentText()
+        destination = self.destinationCombo.currentText()
+        transitionN = self.transitionNameTextBox.text()
+        if not origin or not destination or not transitionN:
+            self.showMessage("Error!", "Insuficiente informacion para crear una transicion!")
+            return
+        values = globalProperties["transitions"].get(origin, {})
+        if transitionN in values and globalProperties["isDfa"]:
             self.showMessage("Error!", "Ya existe una transicion con este valor!")
             return
-        createTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
+        createTransition(origin, destination, transitionN)
         self.drawArea.update()
 
     def removeTransition(self, event):
-        foundTransition = deleteTransition(self.originCombo.currentText(), self.destinationCombo.currentText(), self.transitionNameTextBox.text())
+        origin = self.originCombo.currentText()
+        destination = self.destinationCombo.currentText()
+        transitionN = self.transitionNameTextBox.text()
+        if not origin or not destination or not transitionN:
+            self.showMessage("Error!", "Insuficiente informacion para eliminar una transicion!")
+            return
+        foundTransition = deleteTransition(origin, destination, transitionN)
         if not foundTransition:
-            self.showMessag("Error!", "No existe esa transicion!")
+            self.showMessage("Error!", "No existe esa transicion!")
             return
         self.drawArea.update()
         
@@ -268,6 +278,9 @@ class Ui_MainWindow(object):
         origin = self.originCombo.currentText()
         destination = self.destinationCombo.currentText()
         transitionN = self.transitionNameTextBox.text()
+        if not origin or not destination or not transitionN:
+            self.showMessage("Error!", "Insuficiente informacion para modificar una transicion!")
+            return
         values = globalProperties["transitions"].get(origin, {})
         dests = values.get(transitionN, {})
         if destination not in dests:
@@ -321,7 +334,8 @@ class Ui_MainWindow(object):
 
     def drawTransitions(self, p: QPainter):
         p.setPen(QPen(QBrush(QColor(0, 0, 0)), 1))
-        for origin, transitionDict in globalProperties["transitions"].items():
+        toDraw = reduceTransitions()
+        for origin, transitionDict in toDraw.items():
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
