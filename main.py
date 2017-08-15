@@ -258,7 +258,9 @@ class Ui_MainWindow(object):
         if transitionN in values and globalProperties["isDfa"]:
             self.showMessage("Error!", "Ya existe una transicion con este valor!")
             return
-        createTransition(origin, destination, transitionN)
+        created = createTransition(origin, destination, transitionN)
+        if not created:
+            self.showMessage("Error!", "Ya existe una transicion con este valor!")
         self.drawArea.update()
 
     def removeTransition(self, event):

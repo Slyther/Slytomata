@@ -19,7 +19,6 @@ class Nfa:
         for c in word:
             try:
                 current = self.emptyMoves(self.evaluateSub(current, c))
-                print(current)
             except Exception:
                 return False
         for curr in current:

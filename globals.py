@@ -9,9 +9,12 @@ def createTransition(origin, destination, transitionName):
             newVals = [destination]
             newVals.extend(vals)
             values[transitionName] = newVals
+        else:
+            return False
     else:
         values[transitionName] = [destination]
     globalProperties["transitions"][origin] = values
+    return True
 
 def deleteTransition(origin, destination, transitionName):
     try:
@@ -26,6 +29,8 @@ def deleteTransition(origin, destination, transitionName):
                 globalProperties["transitions"][orig][transitionName] = [x for x in globalProperties["transitions"][orig][transitionName] if x != destination]
                 globalProperties["transitions"][orig] = dict((x, v) for x, v in globalProperties["transitions"][orig].items() if v)
         else:
+            if destination not in globalProperties["transitions"][origin][transitionName]:
+                return False
             globalProperties["transitions"][origin][transitionName] = [x for x in globalProperties["transitions"][origin][transitionName] if x != destination]
             globalProperties["transitions"][origin] = dict((x, v) for x, v in globalProperties["transitions"][origin].items() if v)
         globalProperties["transitions"] = dict((x, v) for x, v in globalProperties["transitions"].items() if v)
@@ -54,5 +59,7 @@ def reduceTransitions():
                             transitionList.append(tn)
                 transitionList.sort()
                 newTransitionName = '|'.join(transitionList)
-                toReturn[origin][newTransitionName] = [destination]
+                values = toReturn[origin].get(newTransitionName, [])
+                values.append(destination)
+                toReturn[origin][newTransitionName] = values
     return toReturn
