@@ -161,3 +161,34 @@ class Nfa:
 #         ERf = getERfromDFABase(A)
 #         add ERf a er
 #https://en.wikipedia.org/wiki/Glushkov's_construction_algorithm
+
+def from_regex(regex):
+    #turn parentheses into their own sub-stack and solve for it first
+    
+    return ""#Nfa(start, finals, transitions)
+
+def from_single_char(character):
+    return Nfa("Q0", ["Q1"], {"Q0", {character, ["Q1"]}})
+
+def from_union(first, second):
+    first_states = first.get_states()
+    second_states = second.get_states()
+    #get count of all states and rename all states to their position in the list
+    #update all transitions to the new state names
+    new_transitions = {"Ei", {"$", [first.start, second.start]}, first.finals[0], {"$", ["Ef"]}, second.finals[0], {"$", ["Ef"]}}
+    new_transitions.update(first.transitions)
+    new_transitions.update(second.transitions)
+    return Nfa("Ei", ["Ef"], new_transitions)
+
+def from_product(first, second):
+    #get count of all states and rename all states to their position in the list
+    #update all transitions to the new state names
+    new_transitions = {first.finals[0], {"$", [second.start]}}
+    new_transitions.update(first.transitions)
+    new_transitions.update(second.transitions)
+    return Nfa(first.start, [second.finals[0]], new_transitions)
+
+def as_epsilon_loop(automaton):
+    new_transitions = {"Ei", {"$", [automaton.start, "Ef"]}, automaton.finals[0], {"$", ["Ef", automaton.start]}}
+    new_transitions.update(automaton.transitions)
+    return Nfa("Ei", ["Ef"], new_transitions)
