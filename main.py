@@ -330,9 +330,12 @@ class Ui_MainWindow(object):
         self.showMessage("ER Equivalente", str(result))
     
     def fromRegex(self, event):
-        word = self.chainLabel.text()
-        result = from_regex(word)
-        self.loadAutomaton(result)
+        try:
+            word = self.chainLabel.text()
+            result = from_regex(word)
+            self.loadAutomaton(result)
+        except Exception:
+            self.showMessage("Error!", "Expresion regular invalida!")
 
     def paintDrawArea(self, paintEvent):
         self.updateNodesList()
