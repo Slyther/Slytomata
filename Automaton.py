@@ -1,8 +1,72 @@
+import random, string
 class Nfa:
     def __init__(self, start, finals, transitions):
         self.start = start
         self.finals = finals
         self.transitions = transitions
+
+    def createTransition(self, origin, destination, transitionName, isDfa):
+        values = self.transitions.get(origin, {})
+        if transitionName in values and not isDfa:
+            vals = values[transitionName]
+            if destination not in values[transitionName]:
+                newVals = [destination]
+                newVals.extend(vals)
+                values[transitionName] = newVals
+            else:
+                return False
+        else:
+            values[transitionName] = [destination]
+        self.transitions[origin] = values
+        return True
+
+    def deleteTransition(self, origin, destination, transitionName):
+        try:
+            if transitionName == "":
+                for trans, _ in self.transitions[origin].items():
+                    self.transitions[origin][trans] = [x for x in self.transitions[origin][trans] if x != destination]
+                    self.transitions[origin] = dict((x, v) for x, v in self.transitions[origin].items() if v)
+            elif destination == "":
+                self.transitions[origin] = dict((key, value) for key, value in self.transitions[origin] if value and transitionName != key)
+            elif origin == "":
+                for orig, _ in self.transitions.items():
+                    self.transitions[orig][transitionName] = [x for x in self.transitions[orig][transitionName] if x != destination]
+                    self.transitions[orig] = dict((x, v) for x, v in self.transitions[orig].items() if v)
+            else:
+                if destination not in self.transitions[origin][transitionName]:
+                    return False
+                self.transitions[origin][transitionName] = [x for x in self.transitions[origin][transitionName] if x != destination]
+                self.transitions[origin] = dict((x, v) for x, v in self.transitions[origin].items() if v)
+            self.transitions = dict((x, v) for x, v in self.transitions.items() if v)
+            return True
+        except Exception:
+            return False
+
+    def modifyTransition(self, origin, destination, transitionName, newText, toModify):
+        newInfo = {"origin": origin, "destination": destination, "transitionName": transitionName}
+        self.deleteTransition(newInfo["origin"], newInfo["destination"], newInfo["transitionName"])
+        newInfo[toModify] = newText
+        self.createTransition(newInfo["origin"], newInfo["destination"], newInfo["transitionName"], False)
+
+    def reduceTransitions(self):
+        toReturn = {}
+        for origin, transitionDict in self.transitions.items():
+            toReturn[origin] = {}
+            for transitionName, destinations in transitionDict.items():
+                for destination in destinations:
+                    transitionList = [transitionName]
+                    for tn, dts in transitionDict.items():
+                        if tn == transitionName:
+                            continue
+                        for dt in dts:
+                            if dt == destination:
+                                transitionList.append(tn)
+                    transitionList.sort()
+                    newTransitionName = '|'.join(transitionList)
+                    values = toReturn[origin].get(newTransitionName, [])
+                    values.append(destination)
+                    toReturn[origin][newTransitionName] = values
+        return toReturn
 
     def emptyMoves(self, states):
         temp = list(states)
@@ -77,24 +141,24 @@ class Nfa:
         finals = []
         for state in start:
             if state in self.finals:
-                finals.append(''.join(sorted(start)))
+                finals.append(''.join(str(e) for e in sorted(start)))
                 break
         while temp:
             current_set = temp.pop()
-            transitions[''.join(sorted(current_set))] = {}
+            transitions[''.join(str(e) for e in sorted(current_set))] = {}
             for symbol in self.getAlphabet():
                 new_set = self.emptyMoves(self.evaluateSub(current_set, symbol))
-                transitions[''.join(sorted(current_set))][symbol] = [''.join(sorted(new_set))]
+                transitions[''.join(str(e) for e in sorted(current_set))][symbol] = [''.join(str(e) for e in sorted(new_set))]
                 for state in new_set:
                     if state in self.finals:
-                        new_set_str = ''.join(sorted(new_set))
+                        new_set_str = ''.join(str(e) for e in sorted(new_set))
                         if new_set_str not in finals:
                             finals.append(new_set_str)
                         break
                 if new_set not in states:
                     states.append(new_set)
                     temp.append(new_set)
-        return Nfa(''.join(sorted(start)), finals, transitions)
+        return Nfa(''.join(str(e) for e in sorted(start)), finals, transitions)
 
     def superset(self, states):
         from itertools import chain, combinations
@@ -149,46 +213,149 @@ class Nfa:
         else:
             return ['(', expr, ')']
 
-# A = buildAutomataER(DFA)
-# er = ''
-# for f in F:
-#     estadosBorrar = getEstadosBorrar(f)
-#     for estadoBorrar in estadosBorrar:
-#         tabla = buildTabla(estadoBorrar)
-#         del A[estadoBorrar]
-#         for transicion in tabla:
-#             A.append(transicion)
-#         ERf = getERfromDFABase(A)
-#         add ERf a er
-#https://en.wikipedia.org/wiki/Glushkov's_construction_algorithm
-
 def from_regex(regex):
-    #turn parentheses into their own sub-stack and solve for it first
-    
-    return ""#Nfa(start, finals, transitions)
+    regex = regex.replace(" ", "")
+    if regex.count('(') != regex.count(')'):
+        return None
+    valid = "+.()*abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
+    for c in regex:
+        if c not in valid:
+            return None
+    invalid = ['+*', '.+', '+.', '()', '+)', '(+', '.)', '.*', '.)', '++', '..', "**"]
+    final_chars = "+.*"
+    expressions = []
+    for inv in invalid:
+        if inv in regex:
+            return None
+    if "(" not in regex:
+        if len(regex) == 1 and type(regex) == str:
+            expressions.append(from_single_char(regex[0]))
+        else:
+            for x in regex:
+                expressions.append(x)
+    else:
+        i = 0
+        pos = 0
+        it = 0
+        while it < len(regex):
+            if regex[it] == '(':
+                if i == 0:
+                    pos = it
+                i += 1
+            if regex[it] == ')':
+                if i == 1:
+                    subs = regex[pos+1: it]
+                    expressions.append(regex.split("("+subs+")", 1)[0])
+                    expressions.append(subs)
+                    expressions.append(regex.split("("+subs+")", 1)[1])
+                    break
+                i -= 1
+            it += 1
+        expressions = [x for x in expressions if x != '' and x]
+    it = 0
+    while it < len(expressions):
+        exp = expressions[it]
+        if type(exp) == Nfa or exp in final_chars:
+            it+=1
+            continue
+        newExp = expressions[:it]
+        result = from_regex(exp)
+        if type(result) == Nfa:
+            newExp.append(result)
+        else:
+            newExp.extend(result)
+        newExp.extend(expressions[it+1:])
+        expressions = newExp
+        it=0
+    if len(expressions) == 1:
+        return expressions[0]
+    else:
+        while len(expressions) > 1:
+            if '*' in expressions:
+                n = expressions.index('*')
+                if(n == 0):
+                    return expressions
+                res = as_epsilon_loop(expressions[n-1])
+                del expressions[n]
+                expressions[n-1] = res
+            else:
+                n = expressions[0]
+                n2 = expressions[1]
+                if type(n2) != Nfa and len(expressions) > 2:
+                    n3 = expressions[2]
+                    res = ""
+                    if(n2 == '+'):
+                        res = from_union(n, n3)
+                    elif(n2 == '.'):
+                        res = from_product(n, n3)
+                    del expressions[2]
+                    del expressions[1]
+                    expressions[0] = res
+                    continue
+                if type(n) != Nfa or type(n2) != Nfa:
+                    return expressions
+                res = from_product(n, n2)
+                del expressions[1]
+                expressions[0] = res
+        return standardized(expressions[0])
+
 
 def from_single_char(character):
-    return Nfa("Q0", ["Q1"], {"Q0", {character, ["Q1"]}})
+    return Nfa("Q0", ["Q1"], {"Q0": {character: ["Q1"]}})
 
 def from_union(first, second):
     first_states = first.get_states()
     second_states = second.get_states()
-    #get count of all states and rename all states to their position in the list
-    #update all transitions to the new state names
-    new_transitions = {"Ei", {"$", [first.start, second.start]}, first.finals[0], {"$", ["Ef"]}, second.finals[0], {"$", ["Ef"]}}
+    clear_conflicts_for_first(first_states, second_states, first)
+    clear_conflicts_for_first(second_states, first_states, second)
+    new_transitions = {"Ei": {"$": [first.start, second.start]}, first.finals[0]: {"$": ["Ef"]}, second.finals[0]: {"$": ["Ef"]}}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
     return Nfa("Ei", ["Ef"], new_transitions)
 
 def from_product(first, second):
-    #get count of all states and rename all states to their position in the list
-    #update all transitions to the new state names
-    new_transitions = {first.finals[0], {"$", [second.start]}}
+    first_states = first.get_states()
+    second_states = second.get_states()
+    clear_conflicts_for_first(first_states, second_states, first)
+    clear_conflicts_for_first(second_states, first_states, second)
+    new_transitions = {first.finals[0]: {"$": [second.start]}}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
     return Nfa(first.start, [second.finals[0]], new_transitions)
 
 def as_epsilon_loop(automaton):
-    new_transitions = {"Ei", {"$", [automaton.start, "Ef"]}, automaton.finals[0], {"$", ["Ef", automaton.start]}}
+    new_transitions = {"Ei": {"$": [automaton.start, "Ef"]}, automaton.finals[0]: {"$": ["Ef", automaton.start]}}
     new_transitions.update(automaton.transitions)
     return Nfa("Ei", ["Ef"], new_transitions)
+
+def standardized(automaton):
+    clear_conflicts_for_first(automaton.get_states(), [], automaton)
+    states = automaton.get_states()
+    for i, state in enumerate(states):
+        new_name = "Q"+str(i)
+        modify_state_name(state, new_name, automaton)
+    return automaton
+
+def clear_conflicts_for_first(first_states, second_states, first):
+    for state in first_states:
+        new_name = state
+        while new_name in first_states or new_name in second_states:
+            new_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+        modify_state_name(state, new_name, first)
+
+def modify_state_name(state, new_name, automaton):
+    if state == automaton.start:
+        automaton.start = new_name
+    if state in automaton.finals:
+        automaton.finals = [st for st in automaton.finals if st != state]
+        automaton.finals.append(new_name)
+    for origin, transitionDict in automaton.transitions.items():
+        for transitionName, destinations in transitionDict.items():
+            for destination in destinations:
+                if origin == state and destination == state:
+                    automaton.modifyTransition(state, state, transitionName, new_name, "origin")
+                    automaton.modifyTransition(new_name, state, transitionName, new_name, "destination")
+                elif origin == state:
+                    automaton.modifyTransition(state, destination, transitionName, new_name, "origin")
+                elif destination == state:
+                    automaton.modifyTransition(origin, state, transitionName, new_name, "destination")

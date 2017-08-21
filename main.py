@@ -63,8 +63,11 @@ class Ui_MainWindow(object):
         self.evaluateButton.setObjectName("evaluateButton")
         self.horizontalLayout.addWidget(self.evaluateButton)
         self.toRegexButton = QPushButton(self.centralwidget)
-        self.evaluateButton.setObjectName("toRegexButton")
+        self.toRegexButton.setObjectName("toRegexButton")
         self.horizontalLayout.addWidget(self.toRegexButton)
+        self.fromRegexButton = QPushButton(self.centralwidget)
+        self.fromRegexButton.setObjectName("fromRegexButton")
+        self.horizontalLayout.addWidget(self.fromRegexButton)
         self.gridLayout.addLayout(self.horizontalLayout, 3, 0, 1, 1)
         self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setSizeConstraint(QLayout.SetMaximumSize)
@@ -101,6 +104,7 @@ class Ui_MainWindow(object):
         self.modifyTransitionButton.mousePressEvent = self.modifyTransition
         self.evaluateButton.mousePressEvent = self.evaluate
         self.toRegexButton.mousePressEvent = self.toRegex
+        self.fromRegexButton.mousePressEvent = self.fromRegex
         self.removeTransitionButton.mousePressEvent = self.removeTransition
         self.drawArea.setContextMenuPolicy(Qt.CustomContextMenu)
         self.drawArea.customContextMenuRequested.connect(self.showContextMenu)
@@ -120,6 +124,7 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Cadena: "))
         self.evaluateButton.setText(_translate("MainWindow", "Evaluar"))
         self.toRegexButton.setText(_translate("MainWindow", "Mostrar ER Equivalente"))
+        self.fromRegexButton.setText(_translate("MainWindow", "Convertir ER a NFA-E"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionSave_As.setText(_translate("MainWindow", "Save As..."))
         self.actionOpen.setText(_translate("MainWindow", "Open..."))
@@ -323,6 +328,11 @@ class Ui_MainWindow(object):
             return
         result =  Nfa(initial, finals, globalProperties["transitions"]).regex()
         self.showMessage("ER Equivalente", str(result))
+    
+    def fromRegex(self, event):
+        word = self.chainLabel.text()
+        result = from_regex(word)
+        self.loadAutomaton(result)
 
     def paintDrawArea(self, paintEvent):
         self.updateNodesList()
