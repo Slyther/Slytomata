@@ -145,9 +145,13 @@ class Nfa:
                 break
         while temp:
             current_set = temp.pop()
+            if len(current_set) == 0:
+                continue
             transitions[''.join(str(e) for e in sorted(current_set))] = {}
             for symbol in self.getAlphabet():
                 new_set = self.emptyMoves(self.evaluateSub(current_set, symbol))
+                if len(new_set) == 0:
+                    continue
                 transitions[''.join(str(e) for e in sorted(current_set))][symbol] = [''.join(str(e) for e in sorted(new_set))]
                 for state in new_set:
                     if state in self.finals:
@@ -275,7 +279,7 @@ def from_regex(regex):
                 n = expressions.index('*')
                 if(n == 0):
                     return expressions
-                res = as_epsilon_loop(expressions[n-1])
+                res = kleene_star_expression(expressions[n-1])
                 del expressions[n]
                 expressions[n-1] = res
             else:
@@ -285,77 +289,115 @@ def from_regex(regex):
                     n3 = expressions[2]
                     res = ""
                     if(n2 == '+'):
-                        res = from_union(n, n3)
+                        res = union_expression(n, n3)
                     elif(n2 == '.'):
-                        res = from_product(n, n3)
+                        res = concatenation_expression(n, n3)
                     del expressions[2]
                     del expressions[1]
                     expressions[0] = res
                     continue
                 if type(n) != Nfa or type(n2) != Nfa:
                     return expressions
-                res = from_product(n, n2)
+                res = concatenation_expression(n, n2)
                 del expressions[1]
                 expressions[0] = res
-        return standardized(expressions[0])
+        return expressions[0].standardized()
 
 
 def from_single_char(character):
     return Nfa("Q0", ["Q1"], {"Q0": {character: ["Q1"]}})
 
-def from_union(first, second):
+def union_expression(first, second):
+    if len(first.finals) > 1:
+        first = with_final_epsilon(first)
+    if len(second.finals) > 1:
+        second = with_final_epsilon(second)
     first_states = first.get_states()
     second_states = second.get_states()
-    clear_conflicts_for_first(first_states, second_states, first)
-    clear_conflicts_for_first(second_states, first_states, second)
+    first.clear_conflicts(second_states)
+    second.clear_conflicts(first_states)
     new_transitions = {"Ei": {"$": [first.start, second.start]}, first.finals[0]: {"$": ["Ef"]}, second.finals[0]: {"$": ["Ef"]}}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
     return Nfa("Ei", ["Ef"], new_transitions)
 
-def from_product(first, second):
+def concatenation_expression(first, second):
+    if len(first.finals) > 1:
+        first = with_final_epsilon(first)
+    if len(second.finals) > 1:
+        second = with_final_epsilon(second)
     first_states = first.get_states()
     second_states = second.get_states()
-    clear_conflicts_for_first(first_states, second_states, first)
-    clear_conflicts_for_first(second_states, first_states, second)
+    first.clear_conflicts(second_states)
+    second.clear_conflicts(first_states)
     new_transitions = {first.finals[0]: {"$": [second.start]}}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
     return Nfa(first.start, [second.finals[0]], new_transitions)
 
-def as_epsilon_loop(automaton):
+def kleene_star_expression(automaton):
+    if len(automaton.finals) > 1:
+        automaton = with_final_epsilon(automaton)
     new_transitions = {"Ei": {"$": [automaton.start, "Ef"]}, automaton.finals[0]: {"$": ["Ef", automaton.start]}}
     new_transitions.update(automaton.transitions)
     return Nfa("Ei", ["Ef"], new_transitions)
 
-def standardized(automaton):
-    clear_conflicts_for_first(automaton.get_states(), [], automaton)
-    states = automaton.get_states()
+def with_final_epsilon(automaton):
+    new_transitions = {}
+    new_transitions.update(automaton.transitions)
+    for final in automaton.finals:
+        new_transitions[final] = {"$": ["Ef"]}
+    return Nfa(automaton.start, ["Ef"], new_transitions)
+
+def standardized(self):
+    self.clear_conflicts([])
+    states = self.get_states()
     for i, state in enumerate(states):
         new_name = "Q"+str(i)
-        modify_state_name(state, new_name, automaton)
-    return automaton
+        self.modify_state_name(state, new_name)
+    return self
 
-def clear_conflicts_for_first(first_states, second_states, first):
-    for state in first_states:
+def clear_conflicts(self, second_states):
+    for state in self.get_states():
         new_name = state
-        while new_name in first_states or new_name in second_states:
+        while new_name in self.get_states() or new_name in second_states:
             new_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-        modify_state_name(state, new_name, first)
+        first.modify_state_name(state, new_name)
 
-def modify_state_name(state, new_name, automaton):
-    if state == automaton.start:
-        automaton.start = new_name
-    if state in automaton.finals:
-        automaton.finals = [st for st in automaton.finals if st != state]
-        automaton.finals.append(new_name)
-    for origin, transitionDict in automaton.transitions.items():
+def modify_state_name(self, state, new_name):
+    if state == self.start:
+        self.start = new_name
+    if state in self.finals:
+        self.finals = [st for st in self.finals if st != state]
+        self.finals.append(new_name)
+    for origin, transitionDict in self.transitions.items():
         for transitionName, destinations in transitionDict.items():
             for destination in destinations:
                 if origin == state and destination == state:
-                    automaton.modifyTransition(state, state, transitionName, new_name, "origin")
-                    automaton.modifyTransition(new_name, state, transitionName, new_name, "destination")
+                    self.modifyTransition(state, state, transitionName, new_name, "origin")
+                    self.modifyTransition(new_name, state, transitionName, new_name, "destination")
                 elif origin == state:
-                    automaton.modifyTransition(state, destination, transitionName, new_name, "origin")
+                    self.modifyTransition(state, destination, transitionName, new_name, "origin")
                 elif destination == state:
-                    automaton.modifyTransition(origin, state, transitionName, new_name, "destination")
+                    self.modifyTransition(origin, state, transitionName, new_name, "destination")
+
+def complement(self):
+    return Nfa(self.start, [x for x in self.get_states() if x not in self.finals], self.transitions)
+
+def difference(self, second):
+    return intersection(second).complement()
+
+def intersection(self, second):
+    self.clear_conflicts(second.get_states())
+    joined = union_expression(self, second).clearing_epsilon()
+    not_finals = [x for x in self.get_states() if x not in self.finals] + [x for x in second.get_states() if x not in second.finals]
+    new_not_finals = []
+    for final in joined.finals:
+        for not_final in not_finals:
+            if not_final in final and final not in new_not_finals:
+                new_not_finals.append(final)
+    return Nfa(joined.start, [final for final in joined.finals if final not in new_not_finals], joined.transitions)
+
+def union(self, second):
+    self.clear_conflicts(second.get_states())
+    return union_expression(self, second).clearing_epsilon()

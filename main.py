@@ -206,10 +206,10 @@ class Ui_MainWindow(object):
             pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
             globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
         globalProperties["transitions"] = automaton.transitions
-        try:
-            next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
-        except StopIteration:
-            pass
+        # try:
+        #     next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
+        # except StopIteration:
+        #     pass
         nodesToDelete = []
         for node in globalProperties["nodes"]:
             try:
