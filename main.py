@@ -327,6 +327,8 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial!")
             return
         result =  Nfa(initial, finals, globalProperties["transitions"]).regex()
+        import subprocess
+        subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
         self.showMessage("ER Equivalente", str(result))
     
     def fromRegex(self, event):
@@ -334,6 +336,7 @@ class Ui_MainWindow(object):
             word = self.chainLabel.text()
             result = from_regex(word)
             self.loadAutomaton(result)
+            globalProperties["isDfa"] = False
         except Exception:
             self.showMessage("Error!", "Expresion regular invalida!")
 
