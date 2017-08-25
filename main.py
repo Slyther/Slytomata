@@ -167,14 +167,73 @@ class Ui_MainWindow(object):
                                                "Save Automaton to File",
                                                "/", "Automaton Files (*.atm)")
         if fileName[1]:
-            while globalProperties["nodes"]:
-                node = next(n for n in globalProperties["nodes"]) #aqui hay un bug bien heavy lurking in the background
-                node.removeNode(None)
             try:
                 globalProperties["drawArea"] = self.drawArea
                 localProperties = pickle.load(open(fileName[0], "rb"))
-                globalProperties.update(localProperties)
-                globalProperties["fileURL"] = fileName[0]
+                if(globalProperties["nodes"]):
+                    msgBox = QMessageBox()
+                    msgBox.setWindowTitle("Que accion desea tomar?")
+                    msgBox.setText("Actualmente hay un automata cargado. Que desea hacer?")
+                    msgBox.addButton(QPushButton('Cargar Nuevo'), QMessageBox.YesRole)
+                    msgBox.addButton(QPushButton('Union'), QMessageBox.NoRole)
+                    msgBox.addButton(QPushButton('Interseccion'), QMessageBox.RejectRole)
+                    msgBox.addButton(QPushButton('Diferencia'), QMessageBox.ApplyRole)
+                    msgBox.addButton(QPushButton('Cancelar'), QMessageBox.HelpRole)
+                    response = msgBox.exec_()
+                    print(response)
+                    if response == QMessageBox.Help or not response:
+                        print("Cancelar")
+                        del localProperties
+                        return
+                    finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+                    if not finals:
+                        self.showMessage("Error!", "No hay estados de aceptacion en el automata actual!")
+                        del localProperties
+                        return
+                    try:
+                        initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+                    except StopIteration:
+                        self.showMessage("Error!", "No hay estado inicial en el automata actual!")
+                        del localProperties                        
+                        return
+                    finals2 = set(node.name for node in localProperties["nodes"] if node.isAcceptanceState)
+                    if not finals:
+                        self.showMessage("Error!", "No hay estados de aceptacion en el automata de archivo!")
+                        del localProperties                        
+                        return
+                    try:
+                        initial2 = next(node.name for node in localProperties["nodes"] if node.isInitialState)
+                    except StopIteration:
+                        self.showMessage("Error!", "No hay estado inicial en el automata de archivo!")
+                        del localProperties                        
+                        return
+                    current_automaton = Nfa(initial2, finals2, globalProperties["transitions"])
+                    automaton_from_file = Nfa(initial2, finals2, localProperties["transitions"])
+                    if response == QMessageBox.Yes:
+                        print("Cargar Nuevo")
+                        while globalProperties["nodes"]:
+                            node = globalProperties["nodes"].pop() #aqui hay un bug bien heavy lurking in the background
+                            node.removeNode(None)
+                        globalProperties.update(localProperties)
+                    elif response == QMessageBox.No:
+                        print("Union")
+                        to_load = current_automaton.union(automaton_from_file)
+                        self.loadAutomaton(to_load)
+                    elif response == QMessageBox.Rejected:
+                        print("Interseccion")
+                        to_load = current_automaton.intersection(automaton_from_file)
+                        self.loadAutomaton(to_load)
+                    elif response == QMessageBox.Apply:
+                        print("Diferencia")
+                        to_load = current_automaton.difference(automaton_from_file)
+                        self.loadAutomaton(to_load)
+                    globalProperties["fileURL"] = fileName[0]
+                    self.drawArea.update()
+                else:
+                    while globalProperties["nodes"]:
+                        node = globalProperties["nodes"].pop() #aqui hay un bug bien heavy lurking in the background
+                        node.removeNode(None)
+                    globalProperties.update(localProperties)
                 self.drawArea.update()
                 return
             except Exception:

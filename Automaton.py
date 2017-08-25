@@ -216,6 +216,59 @@ class Nfa:
             return ['(', expr[:-3], ')']
         else:
             return ['(', expr, ')']
+    
+    def standardized(self):
+        self.clear_conflicts([])
+        states = self.get_states()
+        for i, state in enumerate(states):
+            new_name = "Q"+str(i)
+            self.modify_state_name(state, new_name)
+        return self
+
+    def clear_conflicts(self, second_states):
+        for state in self.get_states():
+            new_name = state
+            while new_name in self.get_states() or new_name in second_states:
+                new_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+            self.modify_state_name(state, new_name)
+
+    def modify_state_name(self, state, new_name):
+        if state == self.start:
+            self.start = new_name
+        if state in self.finals:
+            self.finals = [st for st in self.finals if st != state]
+            self.finals.append(new_name)
+        for origin, transitionDict in self.transitions.items():
+            for transitionName, destinations in transitionDict.items():
+                for destination in destinations:
+                    if origin == state and destination == state:
+                        self.modifyTransition(state, state, transitionName, new_name, "origin")
+                        self.modifyTransition(new_name, state, transitionName, new_name, "destination")
+                    elif origin == state:
+                        self.modifyTransition(state, destination, transitionName, new_name, "origin")
+                    elif destination == state:
+                        self.modifyTransition(origin, state, transitionName, new_name, "destination")
+
+    def complement(self):
+        return Nfa(self.start, [x for x in self.get_states() if x not in self.finals], self.transitions)
+
+    def difference(self, second):
+        return self.intersection(second).complement()
+
+    def intersection(self, second):
+        self.clear_conflicts(second.get_states())
+        joined = union_expression(self, second).clearing_epsilon()
+        not_finals = [x for x in self.get_states() if x not in self.finals] + [x for x in second.get_states() if x not in second.finals]
+        new_not_finals = []
+        for final in joined.finals:
+            for not_final in not_finals:
+                if not_final in final and final not in new_not_finals:
+                    new_not_finals.append(final)
+        return Nfa(joined.start, [final for final in joined.finals if final not in new_not_finals], joined.transitions)
+
+    def union(self, second):
+        self.clear_conflicts(second.get_states())
+        return union_expression(self, second).clearing_epsilon()
 
 def from_regex(regex):
     regex = regex.replace(" ", "")
@@ -348,56 +401,3 @@ def with_final_epsilon(automaton):
     for final in automaton.finals:
         new_transitions[final] = {"$": ["Ef"]}
     return Nfa(automaton.start, ["Ef"], new_transitions)
-
-def standardized(self):
-    self.clear_conflicts([])
-    states = self.get_states()
-    for i, state in enumerate(states):
-        new_name = "Q"+str(i)
-        self.modify_state_name(state, new_name)
-    return self
-
-def clear_conflicts(self, second_states):
-    for state in self.get_states():
-        new_name = state
-        while new_name in self.get_states() or new_name in second_states:
-            new_name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-        first.modify_state_name(state, new_name)
-
-def modify_state_name(self, state, new_name):
-    if state == self.start:
-        self.start = new_name
-    if state in self.finals:
-        self.finals = [st for st in self.finals if st != state]
-        self.finals.append(new_name)
-    for origin, transitionDict in self.transitions.items():
-        for transitionName, destinations in transitionDict.items():
-            for destination in destinations:
-                if origin == state and destination == state:
-                    self.modifyTransition(state, state, transitionName, new_name, "origin")
-                    self.modifyTransition(new_name, state, transitionName, new_name, "destination")
-                elif origin == state:
-                    self.modifyTransition(state, destination, transitionName, new_name, "origin")
-                elif destination == state:
-                    self.modifyTransition(origin, state, transitionName, new_name, "destination")
-
-def complement(self):
-    return Nfa(self.start, [x for x in self.get_states() if x not in self.finals], self.transitions)
-
-def difference(self, second):
-    return intersection(second).complement()
-
-def intersection(self, second):
-    self.clear_conflicts(second.get_states())
-    joined = union_expression(self, second).clearing_epsilon()
-    not_finals = [x for x in self.get_states() if x not in self.finals] + [x for x in second.get_states() if x not in second.finals]
-    new_not_finals = []
-    for final in joined.finals:
-        for not_final in not_finals:
-            if not_final in final and final not in new_not_finals:
-                new_not_finals.append(final)
-    return Nfa(joined.start, [final for final in joined.finals if final not in new_not_finals], joined.transitions)
-
-def union(self, second):
-    self.clear_conflicts(second.get_states())
-    return union_expression(self, second).clearing_epsilon()
