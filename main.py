@@ -176,7 +176,7 @@ class Ui_MainWindow(object):
                     initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
                 except StopIteration:
                     initial = None
-                result = Nfa(initial, finals, globalProperties["transitions"])
+                result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"]))
                 pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             self.saveToFileAs(event)
@@ -211,7 +211,7 @@ class Ui_MainWindow(object):
                     except StopIteration:
                         self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
                         return
-                    current_automaton = Nfa(initial, finals, globalProperties["transitions"])
+                    current_automaton = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"]))
                     if response == QMessageBox.YesRole:
                         self.loadAutomaton(automaton_from_file)
                     elif response == QMessageBox.NoRole:
@@ -240,7 +240,7 @@ class Ui_MainWindow(object):
         except StopIteration:
             self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
             return
-        current_automaton = Nfa(initial, finals, globalProperties["transitions"]).reversal()
+        current_automaton = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).reversal()
         self.loadAutomaton(current_automaton)
 
     def complement(self, event):
@@ -253,7 +253,7 @@ class Ui_MainWindow(object):
         except StopIteration:
             self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
             return
-        current_automaton = Nfa(initial, finals, globalProperties["transitions"]).complement()
+        current_automaton = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).complement()
         self.loadAutomaton(current_automaton)
 
     def switchAutomatonType(self, event):
@@ -267,7 +267,7 @@ class Ui_MainWindow(object):
         except StopIteration:
             origin = None
         finals = [node.name for node in globalProperties["nodes"] if node.isAcceptanceState]
-        automaton = Nfa(origin, finals, globalProperties["transitions"]).clearing_epsilon()
+        automaton = Nfa(origin, finals, copy.deepcopy(globalProperties["transitions"])).clearing_epsilon()
         self.loadAutomaton(automaton)
 
     def loadAutomaton(self, automaton):
@@ -309,7 +309,7 @@ class Ui_MainWindow(object):
             except StopIteration:
                 origin = None
             finals = [node.name for node in globalProperties["nodes"] if node.isAcceptanceState]
-            automaton = Nfa(origin, finals, globalProperties["transitions"]).as_dfa()
+            automaton = Nfa(origin, finals, copy.deepcopy(globalProperties["transitions"])).as_dfa()
             self.loadAutomaton(automaton)
 
     def updateNodesList(self):
@@ -389,7 +389,7 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial!")
             return
         word = self.chainLabel.text()
-        result = Nfa(initial, finals, globalProperties["transitions"]).evaluate(word)
+        result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
         self.showMessage("Resultado", str(result))
 
     def toRegex(self, event):
@@ -402,7 +402,7 @@ class Ui_MainWindow(object):
         except StopIteration:
             self.showMessage("Error!", "No hay estado inicial!")
             return
-        result =  Nfa(initial, finals, globalProperties["transitions"]).regex()
+        result =  Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).regex()
         import subprocess
         subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
         self.showMessage("ER Equivalente", str(result))
