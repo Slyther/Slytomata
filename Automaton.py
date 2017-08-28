@@ -1,4 +1,4 @@
-import random, string
+import random, string, copy
 class Nfa:
     def __init__(self, start, finals, transitions):
         self.start = start
@@ -250,7 +250,7 @@ class Nfa:
                         self.modifyTransition(origin, state, transitionName, new_name, "destination")
 
     def complement(self):
-        return Nfa(self.start, list(x for x in self.get_states() if x not in self.finals), self.transitions)
+        return Nfa(self.start, list(x for x in self.get_states() if x not in self.finals), copy.deepcopy(self.transitions))
 
     def difference(self, second):
         return self.intersection(second.complement())
