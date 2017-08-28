@@ -21,13 +21,6 @@ class Node(QtWidgets.QLabel):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
         self.update()
-    
-    def __getstate__(self):
-        toReturn = {"name":self.name, "isInitialState":self.isInitialState, "isAcceptanceState":self.isAcceptanceState, "pos":self.pos}
-        return toReturn
-
-    def __setstate__(self, state):
-        self.__init__(globalProperties["drawArea"], state["pos"], state["name"], state["isAcceptanceState"], state["isInitialState"])
 
     def drawNode(self, paintEvent):
         p = QPainter(self)

@@ -250,25 +250,26 @@ class Nfa:
                         self.modifyTransition(origin, state, transitionName, new_name, "destination")
 
     def complement(self):
-        return Nfa(self.start, [x for x in self.get_states() if x not in self.finals], self.transitions)
+        return Nfa(self.start, list(x for x in self.get_states() if x not in self.finals), self.transitions)
 
     def difference(self, second):
-        return self.intersection(second).complement()
+        return self.intersection(second.complement())
 
     def intersection(self, second):
-        self.clear_conflicts(second.get_states())
-        joined = union_expression(self, second).clearing_epsilon()
-        not_finals = [x for x in self.get_states() if x not in self.finals] + [x for x in second.get_states() if x not in second.finals]
-        new_not_finals = []
-        for final in joined.finals:
-            for not_final in not_finals:
-                if not_final in final and final not in new_not_finals:
-                    new_not_finals.append(final)
-        return Nfa(joined.start, [final for final in joined.finals if final not in new_not_finals], joined.transitions)
+        return self.complement().union(second.complement()).complement()
 
     def union(self, second):
-        self.clear_conflicts(second.get_states())
         return union_expression(self, second).clearing_epsilon()
+
+    def reversal(self):
+        if len(self.finals) > 1:
+            self = with_final_epsilon(self)
+        toReturn = Nfa(self.finals[0], self.start, {})
+        for origin, transitionDict in self.transitions.items():
+            for transitionName, destinations in transitionDict.items():
+                for destination in destinations:
+                    toReturn.createTransition(destination, origin, transitionName, False)
+        return toReturn
 
 def from_regex(regex):
     regex = regex.replace(" ", "")
@@ -365,39 +366,48 @@ def union_expression(first, second):
         first = with_final_epsilon(first)
     if len(second.finals) > 1:
         second = with_final_epsilon(second)
-    first_states = first.get_states()
-    second_states = second.get_states()
-    first.clear_conflicts(second_states)
-    second.clear_conflicts(first_states)
-    new_transitions = {"Ei": {"$": [first.start, second.start]}, first.finals[0]: {"$": ["Ef"]}, second.finals[0]: {"$": ["Ef"]}}
+    first.clear_conflicts(second.get_states())
+    second.clear_conflicts(first.get_states())
+    new_transitions = {}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
-    return Nfa("Ei", ["Ef"], new_transitions)
+    toReturn = Nfa("Ei", ["Ef"], new_transitions)
+    toReturn.createTransition(first.finals[0], "Ef", "$", False)
+    toReturn.createTransition(second.finals[0], "Ef", "$", False)
+    toReturn.createTransition("Ei", first.start, "$", False)
+    toReturn.createTransition("Ei", second.start, "$", False)
+    return toReturn
 
 def concatenation_expression(first, second):
     if len(first.finals) > 1:
         first = with_final_epsilon(first)
     if len(second.finals) > 1:
         second = with_final_epsilon(second)
-    first_states = first.get_states()
-    second_states = second.get_states()
-    first.clear_conflicts(second_states)
-    second.clear_conflicts(first_states)
-    new_transitions = {first.finals[0]: {"$": [second.start]}}
+    first.clear_conflicts(second.get_states())
+    second.clear_conflicts(first.get_states())
+    new_transitions = {}
     new_transitions.update(first.transitions)
     new_transitions.update(second.transitions)
-    return Nfa(first.start, [second.finals[0]], new_transitions)
+    toReturn = Nfa(first.start, [second.finals[0]], new_transitions)
+    toReturn.createTransition(first.finals[0], second.start, "$", False)
+    return toReturn
 
 def kleene_star_expression(automaton):
     if len(automaton.finals) > 1:
         automaton = with_final_epsilon(automaton)
-    new_transitions = {"Ei": {"$": [automaton.start, "Ef"]}, automaton.finals[0]: {"$": ["Ef", automaton.start]}}
+    new_transitions = {}
     new_transitions.update(automaton.transitions)
-    return Nfa("Ei", ["Ef"], new_transitions)
+    toReturn = Nfa("Ei", ["Ef"], new_transitions)
+    toReturn.createTransition(automaton.finals[0], "Ef", "$", False)
+    toReturn.createTransition(automaton.finals[0], automaton.start, "$", False)
+    toReturn.createTransition("Ei", automaton.start, "$", False)
+    toReturn.createTransition("Ei", "Ef", "$", False)
+    return toReturn
 
 def with_final_epsilon(automaton):
     new_transitions = {}
     new_transitions.update(automaton.transitions)
+    toReturn = Nfa(automaton.start, ["Ef"], new_transitions)
     for final in automaton.finals:
-        new_transitions[final] = {"$": ["Ef"]}
-    return Nfa(automaton.start, ["Ef"], new_transitions)
+        toReturn.createTransition(final, "Ef", "$", False)
+    return toReturn

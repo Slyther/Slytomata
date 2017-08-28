@@ -111,6 +111,7 @@ class Ui_MainWindow(object):
         self.actionOpen.triggered.connect(self.loadFromFile)
         self.actionSave_As.triggered.connect(self.saveToFileAs)
         self.actionSave.triggered.connect(self.saveToFile)
+        self.actionNew.triggered.connect(self.new_start)
         QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -143,7 +144,22 @@ class Ui_MainWindow(object):
             action2 = QAction("Colapsar NFA", self.drawArea)
             action2.triggered.connect(self.collapseAutomaton)
             contextMenu.addAction(action2)
+        action3 = QAction("Obtener Reflexion", self.drawArea)
+        action3.triggered.connect(self.reverse)
+        contextMenu.addAction(action3)
+        action4 = QAction("Obtener Complemento", self.drawArea)
+        action4.triggered.connect(self.complement)
+        contextMenu.addAction(action4)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
+
+    def new_start(self, event):
+        while globalProperties["nodes"]:
+            n = globalProperties["nodes"].pop()
+            n.removeNode(None)
+        globalProperties["isDfa"] = True
+        globalProperties["nodeCount"] = 0
+        globalProperties["transitions"] = {}
+        globalProperties["fileURL"] = ""
 
     def saveToFileAs(self, event):
         fileName = QFileDialog.getSaveFileName(self.drawArea,
@@ -155,92 +171,90 @@ class Ui_MainWindow(object):
     def saveToFile(self, event):
         if globalProperties.get("fileURL"):
             with open(globalProperties["fileURL"], 'wb') as handle:
-                if globalProperties.get("drawArea"):
-                    del globalProperties["drawArea"]
-                pickle.dump(globalProperties, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+                try:
+                    initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+                except StopIteration:
+                    initial = None
+                result = Nfa(initial, finals, globalProperties["transitions"])
+                pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             self.saveToFileAs(event)
 
     def loadFromFile(self, event):
         global globalProperties
         fileName = QFileDialog.getOpenFileName(self.drawArea,
-                                               "Save Automaton to File",
+                                               "Load  Automaton from File",
                                                "/", "Automaton Files (*.atm)")
         if fileName[1]:
             try:
-                globalProperties["drawArea"] = self.drawArea
-                localProperties = pickle.load(open(fileName[0], "rb"))
+                automaton_from_file = pickle.load(open(fileName[0], "rb"))
                 if(globalProperties["nodes"]):
                     msgBox = QMessageBox()
                     msgBox.setWindowTitle("Que accion desea tomar?")
                     msgBox.setText("Actualmente hay un automata cargado. Que desea hacer?")
                     msgBox.addButton(QPushButton('Cargar Nuevo'), QMessageBox.YesRole)
                     msgBox.addButton(QPushButton('Union'), QMessageBox.NoRole)
-                    msgBox.addButton(QPushButton('Interseccion'), QMessageBox.RejectRole)
+                    msgBox.addButton(QPushButton('Interseccion'), QMessageBox.ActionRole)
                     msgBox.addButton(QPushButton('Diferencia'), QMessageBox.ApplyRole)
-                    msgBox.addButton(QPushButton('Cancelar'), QMessageBox.HelpRole)
-                    response = msgBox.exec_()
-                    print(response)
-                    if response == QMessageBox.Help or not response:
-                        print("Cancelar")
-                        del localProperties
+                    msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
+                    msgBox.exec_()
+                    response = msgBox.buttonRole(msgBox.clickedButton())
+                    if response == QMessageBox.RejectRole:
                         return
-                    finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+                    finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
                     if not finals:
                         self.showMessage("Error!", "No hay estados de aceptacion en el automata actual!")
-                        del localProperties
                         return
                     try:
                         initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
                     except StopIteration:
-                        self.showMessage("Error!", "No hay estado inicial en el automata actual!")
-                        del localProperties                        
+                        self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
                         return
-                    finals2 = set(node.name for node in localProperties["nodes"] if node.isAcceptanceState)
-                    if not finals:
-                        self.showMessage("Error!", "No hay estados de aceptacion en el automata de archivo!")
-                        del localProperties                        
-                        return
-                    try:
-                        initial2 = next(node.name for node in localProperties["nodes"] if node.isInitialState)
-                    except StopIteration:
-                        self.showMessage("Error!", "No hay estado inicial en el automata de archivo!")
-                        del localProperties                        
-                        return
-                    current_automaton = Nfa(initial2, finals2, globalProperties["transitions"])
-                    automaton_from_file = Nfa(initial2, finals2, localProperties["transitions"])
-                    if response == QMessageBox.Yes:
-                        print("Cargar Nuevo")
-                        while globalProperties["nodes"]:
-                            node = globalProperties["nodes"].pop() #aqui hay un bug bien heavy lurking in the background
-                            node.removeNode(None)
-                        globalProperties.update(localProperties)
-                    elif response == QMessageBox.No:
-                        print("Union")
-                        to_load = current_automaton.union(automaton_from_file)
+                    current_automaton = Nfa(initial, finals, globalProperties["transitions"])
+                    if response == QMessageBox.YesRole:
+                        self.loadAutomaton(automaton_from_file)
+                    elif response == QMessageBox.NoRole:
+                        to_load = current_automaton.union(automaton_from_file).clearing_epsilon().standardized()
                         self.loadAutomaton(to_load)
-                    elif response == QMessageBox.Rejected:
-                        print("Interseccion")
-                        to_load = current_automaton.intersection(automaton_from_file)
+                    elif response == QMessageBox.ActionRole:
+                        to_load = current_automaton.intersection(automaton_from_file).clearing_epsilon().standardized()
                         self.loadAutomaton(to_load)
-                    elif response == QMessageBox.Apply:
-                        print("Diferencia")
-                        to_load = current_automaton.difference(automaton_from_file)
+                    elif response == QMessageBox.ApplyRole:
+                        to_load = current_automaton.difference(automaton_from_file).clearing_epsilon().standardized()
                         self.loadAutomaton(to_load)
-                    globalProperties["fileURL"] = fileName[0]
-                    self.drawArea.update()
                 else:
-                    while globalProperties["nodes"]:
-                        node = globalProperties["nodes"].pop() #aqui hay un bug bien heavy lurking in the background
-                        node.removeNode(None)
-                    globalProperties.update(localProperties)
-                self.drawArea.update()
+                    self.loadAutomaton(automaton_from_file)
+                globalProperties["fileURL"] = fileName[0]
                 return
-            except Exception:
-                if globalProperties.get("drawArea"):
-                    del globalProperties["drawArea"]
-        self.showMessage("Error!", "El archivo no se pudo cargar!")
+            except Exception as e:
+                self.showMessage("Error!", "El archivo no se pudo cargar!")
 
+    def reverse(self, event):
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        if not finals:
+            self.showMessage("Error!", "No hay estados de aceptacion en el automata actual!")
+            return
+        try:
+            initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
+            return
+        current_automaton = Nfa(initial, finals, globalProperties["transitions"]).reversal()
+        self.loadAutomaton(current_automaton)
+
+    def complement(self, event):
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        if not finals:
+            self.showMessage("Error!", "No hay estados de aceptacion en el automata actual!")
+            return
+        try:
+            initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
+            return
+        current_automaton = Nfa(initial, finals, globalProperties["transitions"]).complement()
+        self.loadAutomaton(current_automaton)
 
     def switchAutomatonType(self, event):
         globalProperties["isDfa"] = not globalProperties["isDfa"]
@@ -265,10 +279,12 @@ class Ui_MainWindow(object):
             pos = QPoint(randrange(0, self.drawArea.rect().width()), randrange(0, self.drawArea.rect().height()))
             globalProperties["nodes"].append(Node(self.drawArea, pos, state, state in automaton.finals, automaton.start == state))
         globalProperties["transitions"] = automaton.transitions
-        # try:
-        #     next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
-        # except StopIteration:
-        #     pass
+        #Remove node with empty name if it exists. Afterwards, remove all nodes that are not destinations and are not initial.
+        #Replace this code with minimization in future.
+        try:
+            next(node for node in globalProperties["nodes"] if node.name == '').removeNode(None)
+        except StopIteration:
+            pass
         nodesToDelete = []
         for node in globalProperties["nodes"]:
             try:
@@ -283,6 +299,7 @@ class Ui_MainWindow(object):
         while nodesToDelete:
             n = nodesToDelete.pop()
             n.removeNode(None)
+        globalProperties["isDfa"] = False
         self.drawArea.update()
 
     def translateAutomaton(self):
@@ -362,7 +379,7 @@ class Ui_MainWindow(object):
                 self.drawArea.update()
 
     def evaluate(self, event):
-        finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
         if not finals:
             self.showMessage("Error!", "No hay estados de aceptacion!")
             return
@@ -376,7 +393,7 @@ class Ui_MainWindow(object):
         self.showMessage("Resultado", str(result))
 
     def toRegex(self, event):
-        finals = set(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
         if not finals:
             self.showMessage("Error!", "No hay estados de aceptacion!")
             return
