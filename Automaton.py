@@ -271,6 +271,52 @@ class Nfa:
                     toReturn.createTransition(destination, origin, transitionName, False)
         return toReturn
 
+    def minimized(self):
+        states = self.get_states()
+        alphabet = self.getAlphabet()
+        equivalence_table = {}
+
+        for stateX in states:
+            equivalence_table[stateX] = {}
+            for stateY in states:
+                if (stateX in self.finals and stateY not in self.finals) or (stateY in self.finals and stateX not in self.finals) or (stateX == stateY):
+                    equivalence_table[stateX][stateY] = True
+                    equivalence_table[stateY][stateX] = True
+                else:
+                    equivalence_table[stateX][stateY] = None
+                    equivalence_table[stateY][stateX] = None
+        for i in range(0, 3):
+            for stateX in states:
+                for stateY in states:
+                    if (equivalence_table[stateX][stateY] == None) or (equivalence_table[stateY][stateX] == None):
+                        for letter in alphabet:
+                            try:
+                                if (equivalence_table[self.transitions[stateX][letter]][self.transitions[stateY][letter]] == True) or (equivalence_table[self.transitions[stateY][letter]][self.transitions[stateX][letter]] == True):
+                                    equivalence_table[stateX][stateY] = True
+                                    equivalence_table[stateY][stateX] = True
+                                    break
+                            except Exception:
+                                pass
+                        if (equivalence_table[stateX][stateY] == True) or (equivalence_table[stateY][stateX] == True):
+                            i = -1
+                            break
+        joined_states = []
+        for stateX in states:
+            for stateY in states:
+                if (equivalence_table[stateX][stateY] == None) or (equivalence_table[stateX][stateY] == None):
+                    to_add = []
+                    for st in joined_states:
+                        if stateX in st or stateY in st:
+                            if stateX not in st:
+                                st.append(stateX)
+                            if stateY not in st:
+                                st.append(stateY)
+                            break
+                    
+                    #joined_states.append(stateX + stateY)
+        for joined_x in joined_states:
+            pass
+
 def from_regex(regex):
     regex = regex.replace(" ", "")
     if regex.count('(') != regex.count(')'):
