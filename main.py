@@ -410,10 +410,11 @@ class Ui_MainWindow(object):
     def fromRegex(self, event):
         try:
             word = self.chainLabel.text()
-            result = from_regex(word)
+            result = from_regex(word).minimized()
             self.loadAutomaton(result)
             globalProperties["isDfa"] = False
-        except Exception:
+        except Exception as e:
+            raise(e)
             self.showMessage("Error!", "Expresion regular invalida!")
 
     def paintDrawArea(self, paintEvent):

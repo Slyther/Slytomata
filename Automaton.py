@@ -281,10 +281,8 @@ class Nfa:
             for stateY in states:
                 if (stateX in self.finals and stateY not in self.finals) or (stateY in self.finals and stateX not in self.finals) or (stateX == stateY):
                     equivalence_table[stateX][stateY] = True
-                    equivalence_table[stateY][stateX] = True
                 else:
                     equivalence_table[stateX][stateY] = None
-                    equivalence_table[stateY][stateX] = None
         for i in range(0, 3):
             for stateX in states:
                 for stateY in states:
@@ -303,19 +301,40 @@ class Nfa:
         joined_states = []
         for stateX in states:
             for stateY in states:
-                if (equivalence_table[stateX][stateY] == None) or (equivalence_table[stateX][stateY] == None):
-                    to_add = []
+                if (equivalence_table[stateX][stateY] == None) or (equivalence_table[stateY][stateX] == None):
+                    add = True
                     for st in joined_states:
                         if stateX in st or stateY in st:
                             if stateX not in st:
                                 st.append(stateX)
                             if stateY not in st:
                                 st.append(stateY)
+                            add = False
                             break
-                    
-                    #joined_states.append(stateX + stateY)
-        for joined_x in joined_states:
-            pass
+                    if add:
+                        joined_states.append([stateX, stateY])
+        truly_joined = []
+        toReturn = Nfa(self.start, [], {})
+        for joined in joined_states:
+            truly_joined.append(''.join(joined))
+        for joined in joined_states:
+            for letter in alphabet:
+                for destination in self.evaluateSub(joined, letter):
+                    someRandomBool = True
+                    for truly in truly_joined:
+                        if destination in truly:
+                            toReturn.createTransition(''.join(joined), truly, letter, True)
+                            someRandomBool = False
+                            break
+                    if someRandomBool:
+                        toReturn.createTransition(''.join(joined), destination, letter, True)
+        for final in self.finals:
+            for joined in joined_states:
+                if final in joined and ''.join(joined) not in toReturn.finals:
+                    toReturn.finals.append(''.join(joined))
+                if self.start in joined:
+                    toReturn.start = joined
+        return toReturn
 
 def from_regex(regex):
     regex = regex.replace(" ", "")
