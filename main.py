@@ -150,6 +150,9 @@ class Ui_MainWindow(object):
         action4 = QAction("Obtener Complemento", self.drawArea)
         action4.triggered.connect(self.complement)
         contextMenu.addAction(action4)
+        action5 = QAction("Minimizar", self.drawArea)
+        action5.triggered.connect(self.minimize)
+        contextMenu.addAction(action5)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
     def new_start(self, event):
@@ -254,6 +257,19 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
             return
         current_automaton = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).complement()
+        self.loadAutomaton(current_automaton)
+    
+    def minimize(self, event):
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        if not finals:
+            self.showMessage("Error!", "No hay estados de aceptacion en el automata actual!")
+            return
+        try:
+            initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            self.showMessage("Error!", "No hay estado inicial en el automata actual!")                    
+            return
+        current_automaton = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).minimized()
         self.loadAutomaton(current_automaton)
 
     def switchAutomatonType(self, event):
@@ -403,14 +419,14 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial!")
             return
         result =  Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).regex()
-        import subprocess
-        subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
+        # import subprocess
+        # subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
         self.showMessage("ER Equivalente", str(result))
     
     def fromRegex(self, event):
         try:
             word = self.chainLabel.text()
-            result = from_regex(word).minimized()
+            result = from_regex(word).clearing_epsilon().standardized().minimized().standardized()
             self.loadAutomaton(result)
             globalProperties["isDfa"] = False
         except Exception as e:

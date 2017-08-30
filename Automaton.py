@@ -108,6 +108,8 @@ class Nfa:
                 for destiny in destinies:
                     if destiny not in result:
                         result.append(destiny)
+        if self.start not in result:
+            result.append(self.start)
         return result
 
     def getAlphabet(self):
@@ -279,25 +281,31 @@ class Nfa:
         for stateX in states:
             equivalence_table[stateX] = {}
             for stateY in states:
-                if (stateX in self.finals and stateY not in self.finals) or (stateY in self.finals and stateX not in self.finals) or (stateX == stateY):
+                if stateX == stateY:
+                    equivalence_table[stateX][stateY] = False
+                elif (stateX in self.finals and stateY not in self.finals) or (stateY in self.finals and stateX not in self.finals):
                     equivalence_table[stateX][stateY] = True
                 else:
                     equivalence_table[stateX][stateY] = None
-        for i in range(0, 3):
+        restart = True
+        while restart:
+            restart = False
             for stateX in states:
                 for stateY in states:
                     if (equivalence_table[stateX][stateY] == None) or (equivalence_table[stateY][stateX] == None):
                         for letter in alphabet:
                             try:
-                                if (equivalence_table[self.transitions[stateX][letter]][self.transitions[stateY][letter]] == True) or (equivalence_table[self.transitions[stateY][letter]][self.transitions[stateX][letter]] == True):
+                                if (equivalence_table[self.transitions[stateX][letter][0]][self.transitions[stateY][letter][0]] == True) or (equivalence_table[self.transitions[stateY][letter][0]][self.transitions[stateX][letter][0]] == True):
                                     equivalence_table[stateX][stateY] = True
                                     equivalence_table[stateY][stateX] = True
+                                    restart = True
                                     break
                             except Exception:
                                 pass
-                        if (equivalence_table[stateX][stateY] == True) or (equivalence_table[stateY][stateX] == True):
-                            i = -1
+                        if restart:
                             break
+                if restart:
+                    break
         joined_states = []
         for stateX in states:
             for stateY in states:
@@ -313,17 +321,18 @@ class Nfa:
                             break
                     if add:
                         joined_states.append([stateX, stateY])
-        truly_joined = []
+        for state in states:
+            if not any(v == None for k, v in equivalence_table[state].items()):
+                joined_states.append(state)
         toReturn = Nfa(self.start, [], {})
         for joined in joined_states:
-            truly_joined.append(''.join(joined))
-        for joined in joined_states:
             for letter in alphabet:
-                for destination in self.evaluateSub(joined, letter):
+                destinations = self.evaluateSub(joined, letter) if type(joined) != str else self.transitions.get(joined, {}).get(letter, [])
+                for destination in destinations:
                     someRandomBool = True
-                    for truly in truly_joined:
-                        if destination in truly:
-                            toReturn.createTransition(''.join(joined), truly, letter, True)
+                    for joined_sub in joined_states:
+                        if destination in joined_sub:
+                            toReturn.createTransition(''.join(joined), ''.join(joined_sub), letter, True)
                             someRandomBool = False
                             break
                     if someRandomBool:
@@ -332,8 +341,17 @@ class Nfa:
             for joined in joined_states:
                 if final in joined and ''.join(joined) not in toReturn.finals:
                     toReturn.finals.append(''.join(joined))
-                if self.start in joined:
-                    toReturn.start = joined
+        for joined in joined_states:
+            if self.start in joined:
+                toReturn.start = ''.join(joined)
+        print(equivalence_table)
+        # print(joined_states)
+        # print(toReturn.start)
+        # print(toReturn.finals)
+        # print(toReturn.transitions)
+        # print(self.start)
+        # print(self.finals)
+        # print(self.transitions)
         return toReturn
 
 def from_regex(regex):
