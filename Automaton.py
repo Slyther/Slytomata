@@ -274,6 +274,14 @@ class Nfa:
         return toReturn
 
     def minimized(self):
+        toReturn = with_deadend_state(self)
+        toReturn = toReturn.minimized_internal()
+        for state in toReturn.get_states():
+            toReturn.deleteTransition("Deadend", state, "")
+            toReturn.deleteTransition(state, "Deadend", "")
+        return toReturn
+
+    def minimized_internal(self):
         states = self.get_states()
         alphabet = self.getAlphabet()
         equivalence_table = {}
@@ -344,14 +352,6 @@ class Nfa:
         for joined in joined_states:
             if self.start in joined:
                 toReturn.start = ''.join(joined)
-        print(equivalence_table)
-        # print(joined_states)
-        # print(toReturn.start)
-        # print(toReturn.finals)
-        # print(toReturn.transitions)
-        # print(self.start)
-        # print(self.finals)
-        # print(self.transitions)
         return toReturn
 
 def from_regex(regex):
@@ -493,4 +493,19 @@ def with_final_epsilon(automaton):
     toReturn = Nfa(automaton.start, ["Ef"], new_transitions)
     for final in automaton.finals:
         toReturn.createTransition(final, "Ef", "$", False)
+    return toReturn
+
+def with_deadend_state(automaton):
+    alphabet = automaton.getAlphabet()
+    states = automaton.get_states()
+    toReturn = Nfa(automaton.start, copy.deepcopy(automaton.finals), copy.deepcopy(automaton.transitions))
+    has_deadend = False
+    for state in states:
+        for letter in alphabet:
+            if not automaton.transitions.get(state, {}).get(letter, []):
+                has_deadend = True
+                toReturn.createTransition(state, "Deadend", letter, False)
+    if has_deadend:
+        for letter in alphabet:
+            toReturn.createTransition("Deadend", "Deadend", letter, False)
     return toReturn

@@ -426,7 +426,7 @@ class Ui_MainWindow(object):
     def fromRegex(self, event):
         try:
             word = self.chainLabel.text()
-            result = from_regex(word).clearing_epsilon().standardized().minimized().standardized()
+            result = from_regex(word).clearing_epsilon().minimized().standardized()
             self.loadAutomaton(result)
             globalProperties["isDfa"] = False
         except Exception as e:
