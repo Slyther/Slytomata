@@ -1,4 +1,4 @@
-globalProperties = {"nodes": [], "transitions": {}, "isDfa": True, "nodeCount": 0, "fileURL":""}
+globalProperties = {"nodes": [], "transitions": {}, "isDfa": True, "isPda": False, "nodeCount": 0, "fileURL":""}
 
 
 def createTransition(origin, destination, transitionName):

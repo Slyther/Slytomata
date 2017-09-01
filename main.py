@@ -137,9 +137,17 @@ class Ui_MainWindow(object):
 
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self.drawArea)
-        action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
-        action1.triggered.connect(self.switchAutomatonType)
-        contextMenu.addAction(action1)
+        if not globalProperties["isPda"]:
+            action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
+            action1.triggered.connect(self.switchAutomatonType)
+            contextMenu.addAction(action1)
+            action0 = QAction("Cambiar a PDA", self.drawArea)
+            action0.triggered.connect(self.togglePda)
+            contextMenu.addAction(action0)
+        else:
+            action6 = QAction("Cambiar a DFA", self.drawArea)
+            action6.triggered.connect(self.togglePda)
+            contextMenu.addAction(action6)
         if not globalProperties["isDfa"]:
             action2 = QAction("Colapsar NFA", self.drawArea)
             action2.triggered.connect(self.collapseAutomaton)
@@ -418,7 +426,7 @@ class Ui_MainWindow(object):
         except StopIteration:
             self.showMessage("Error!", "No hay estado inicial!")
             return
-        result =  Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).regex()
+        result =  Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).to_regex()
         # import subprocess
         # subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
         self.showMessage("ER Equivalente", str(result))
@@ -430,7 +438,7 @@ class Ui_MainWindow(object):
             self.loadAutomaton(result)
             globalProperties["isDfa"] = False
         except Exception as e:
-            raise(e)
+            # raise(e)
             self.showMessage("Error!", "Expresion regular invalida!")
 
     def paintDrawArea(self, paintEvent):

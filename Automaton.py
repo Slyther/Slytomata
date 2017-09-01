@@ -211,6 +211,41 @@ class Nfa:
                         expr[x, y] = ''.join(xsy)
         return expr[initial, final]
 
+    def to_regex(self):
+        states = self.get_states()
+        alphabet = self.getAlphabet()
+        B = [""] * len(states)
+        for i in range(0, len(states)):
+            if states[i] in self.finals:
+                B[i] = "$"
+        A = [[""]*len(states)] * len(states)
+        for i in range(0, len(states)):
+            for j in range(0, len(states)):
+                for letter in alphabet:
+                    if(states[j] in self.transitions.get(states[i], {}).get(letter, [])):
+                        A[i][j] = letter
+        print(B)
+        for n in range(len(states)-1, -1, -1):
+            if B[n]:
+                B[n] = "(" + A[n][n] + ")*" + B[n]
+            for j in range(0, n):
+                if A[n][j]:
+                    A[n][j] = "(" + A[n][n] + ")*" + A[n][j]
+            for i in range(0, n):
+                if B[i]:
+                    B[i] = B[i] + "+" + A[i][n] + B[n]
+                else:
+                     B[i] = A[i][n] + B[n]
+                for j in range(0, n):
+                    if A[i][j]:
+                        A[i][j] = A[i][j] + "+" + A[i][n] + A[n][j]
+                    else:
+                        A[i][j] = A[i][n] + A[n][j]
+        print(B)
+        print("-------")
+        print(A)
+        return B[0].replace("()*", "").replace("()", "")
+
     def _add_parentheses(self, expr, starring=False):
         if len(expr) == 1 or (not starring and '+' not in expr):
             return [expr]
@@ -358,7 +393,7 @@ def from_regex(regex):
     regex = regex.replace(" ", "")
     if regex.count('(') != regex.count(')'):
         return None
-    valid = "+.()*abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
+    valid = "+.()*abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$ "
     for c in regex:
         if c not in valid:
             return None
@@ -440,7 +475,6 @@ def from_regex(regex):
                 expressions[0] = res
         return expressions[0].standardized()
 
-
 def from_single_char(character):
     return Nfa("Q0", ["Q1"], {"Q0": {character: ["Q1"]}})
 
@@ -509,3 +543,4 @@ def with_deadend_state(automaton):
         for letter in alphabet:
             toReturn.createTransition("Deadend", "Deadend", letter, False)
     return toReturn
+
