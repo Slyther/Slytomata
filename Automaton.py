@@ -391,7 +391,7 @@ class Pushdown(Automaton):
         except StopIteration:
             pass
         try:
-            exits = self.transitions[current][(word_input, stack[-1])]
+            exits = self.transitions[current][(stack[-1], word_input)]
         except KeyError:
             return False
         altered_word = '' if word_input == '$' else word[1:]
