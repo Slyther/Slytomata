@@ -1,9 +1,30 @@
 import random, string, copy
-class Nfa:
+class Automaton:
     def __init__(self, start, finals, transitions):
         self.start = start
         self.finals = finals
         self.transitions = transitions
+ 
+    def get_states(self):
+        result = []
+        for origin, transitions in self.transitions.items():
+            if origin not in result:
+                result.append(origin)
+            for _, destinies in transitions.items():
+                for destiny in destinies:
+                    if destiny not in result:
+                        result.append(destiny)
+        if self.start not in result:
+            result.append(self.start)
+        return result
+
+    def getAlphabet(self):
+        alphabet = []
+        for transition in self.transitions.values():
+            for symbol in transition:
+                if symbol != "$":
+                    alphabet.append(symbol)
+        return alphabet
 
     def createTransition(self, origin, destination, transitionName, isDfa):
         values = self.transitions.get(origin, {})
@@ -48,25 +69,9 @@ class Nfa:
         newInfo[toModify] = newText
         self.createTransition(newInfo["origin"], newInfo["destination"], newInfo["transitionName"], False)
 
-    def reduceTransitions(self):
-        toReturn = {}
-        for origin, transitionDict in self.transitions.items():
-            toReturn[origin] = {}
-            for transitionName, destinations in transitionDict.items():
-                for destination in destinations:
-                    transitionList = [transitionName]
-                    for tn, dts in transitionDict.items():
-                        if tn == transitionName:
-                            continue
-                        for dt in dts:
-                            if dt == destination:
-                                transitionList.append(tn)
-                    transitionList.sort()
-                    newTransitionName = '|'.join(transitionList)
-                    values = toReturn[origin].get(newTransitionName, [])
-                    values.append(destination)
-                    toReturn[origin][newTransitionName] = values
-        return toReturn
+class Nfa(Automaton):
+    def __init__(self, start, finals, transitions):
+        super().__init__(self, start, finals, transitions)
 
     def emptyMoves(self, states):
         temp = list(states)
@@ -98,27 +103,6 @@ class Nfa:
             except KeyError:
                 pass
         return result
-
-    def get_states(self):
-        result = []
-        for origin, transitions in self.transitions.items():
-            if origin not in result:
-                result.append(origin)
-            for _, destinies in transitions.items():
-                for destiny in destinies:
-                    if destiny not in result:
-                        result.append(destiny)
-        if self.start not in result:
-            result.append(self.start)
-        return result
-
-    def getAlphabet(self):
-        alphabet = []
-        for transition in self.transitions.values():
-            for symbol in transition:
-                if symbol != "$":
-                    alphabet.append(symbol)
-        return alphabet
 
     def as_dfa(self):
         alphabet = self.getAlphabet()
@@ -389,6 +373,35 @@ class Nfa:
                 toReturn.start = ''.join(joined)
         return toReturn
 
+class Pushdown(Automaton):
+    def __init__(self, start, finals, transitions):
+        super().__init__(self, start, finals, transitions)
+
+    def evaluate(self, word, stack_start):
+        return self._evaluate(word, [stack_start], self.start, [])
+
+    def _evaluate(self, word, stack, current, snapshots):
+        if not word and current in self.finals:
+            return True
+        if not stack:
+            return False
+        word_input = '$'
+        try:
+            word_input = next(iter(word))
+        except StopIteration:
+            pass
+        try:
+            exits = self.transitions[current][(word_input, stack[-1])]
+        except KeyError:
+            return False
+        altered_word = '' if word_input == '$' else word[1:]
+        for destiny, push in exits.items():
+            altered_stack = stack[:-1]
+            altered_stack.extend(reversed(push))
+            if self._evaluate(altered_word, altered_stack, destiny, [snapshots] + [current]):
+                return True
+        return False
+
 def from_regex(regex):
     regex = regex.replace(" ", "")
     if regex.count('(') != regex.count(')'):
@@ -543,4 +556,3 @@ def with_deadend_state(automaton):
         for letter in alphabet:
             toReturn.createTransition("Deadend", "Deadend", letter, False)
     return toReturn
-

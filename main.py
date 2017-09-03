@@ -141,26 +141,26 @@ class Ui_MainWindow(object):
             action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
             action1.triggered.connect(self.switchAutomatonType)
             contextMenu.addAction(action1)
-            action0 = QAction("Cambiar a PDA", self.drawArea)
+            action0 = QAction("Modo PDA", self.drawArea)
             action0.triggered.connect(self.togglePda)
             contextMenu.addAction(action0)
+            if not globalProperties["isDfa"]:
+                action2 = QAction("Colapsar NFA", self.drawArea)
+                action2.triggered.connect(self.collapseAutomaton)
+                contextMenu.addAction(action2)
+            action3 = QAction("Obtener Reflexion", self.drawArea)
+            action3.triggered.connect(self.reverse)
+            contextMenu.addAction(action3)
+            action4 = QAction("Obtener Complemento", self.drawArea)
+            action4.triggered.connect(self.complement)
+            contextMenu.addAction(action4)
+            action5 = QAction("Minimizar", self.drawArea)
+            action5.triggered.connect(self.minimize)
+            contextMenu.addAction(action5)
         else:
-            action6 = QAction("Cambiar a DFA", self.drawArea)
+            action6 = QAction("Modo Tradicional", self.drawArea)
             action6.triggered.connect(self.togglePda)
             contextMenu.addAction(action6)
-        if not globalProperties["isDfa"]:
-            action2 = QAction("Colapsar NFA", self.drawArea)
-            action2.triggered.connect(self.collapseAutomaton)
-            contextMenu.addAction(action2)
-        action3 = QAction("Obtener Reflexion", self.drawArea)
-        action3.triggered.connect(self.reverse)
-        contextMenu.addAction(action3)
-        action4 = QAction("Obtener Complemento", self.drawArea)
-        action4.triggered.connect(self.complement)
-        contextMenu.addAction(action4)
-        action5 = QAction("Minimizar", self.drawArea)
-        action5.triggered.connect(self.minimize)
-        contextMenu.addAction(action5)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
     def new_start(self, event):
@@ -187,7 +187,7 @@ class Ui_MainWindow(object):
                     initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
                 except StopIteration:
                     initial = None
-                result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"]))
+                result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])) if not globalProperties["isPda"] else Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"]))
                 pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             self.saveToFileAs(event)
@@ -200,7 +200,7 @@ class Ui_MainWindow(object):
         if fileName[1]:
             try:
                 automaton_from_file = pickle.load(open(fileName[0], "rb"))
-                if(globalProperties["nodes"]):
+                if(globalProperties["nodes"]) and type(automaton_from_file) == Nfa:
                     msgBox = QMessageBox()
                     msgBox.setWindowTitle("Que accion desea tomar?")
                     msgBox.setText("Actualmente hay un automata cargado. Que desea hacer?")
@@ -285,6 +285,22 @@ class Ui_MainWindow(object):
         self.translateAutomaton()
         self.drawArea.update()
 
+    def togglePda(self, event):
+        if(globalProperties["nodes"]):
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Que accion desea tomar?")
+            msgBox.setText("Actualmente hay un automata cargado, que se perderia. Que desea hacer?")
+            msgBox.addButton(QPushButton('Cambiar a PDA'), QMessageBox.YesRole)
+            msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
+            msgBox.exec_()
+            response = msgBox.buttonRole(msgBox.clickedButton())
+            if response == QMessageBox.RejectRole:
+                return
+        self.new_start(None)
+        globalProperties["isDfa"] = False
+        globalProperties["isPda"] = not globalProperties["isPda"]
+        self.drawArea.update()
+
     def collapseAutomaton(self, event):
         try:
             origin = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
@@ -359,6 +375,19 @@ class Ui_MainWindow(object):
         if not origin or not destination or not transitionN:
             self.showMessage("Error!", "Insuficiente informacion para crear una transicion!")
             return
+        if globalProperties["isPda"]:
+            pop = QInputDialog.getText(self.drawArea, "Ingrese Valor Pop", "Ingrese el valor de Pop:", QLineEdit.Normal, "")
+            if pop[1]:
+                push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+                if push[1]:
+                    transitionN = (pop[0], transitionN)
+                    destination = (destination, push[0])
+                else:
+                    self.showMessage("Error!", "No hay valor push definido.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor pop definido.")
+                return
         values = globalProperties["transitions"].get(origin, {})
         if transitionN in values and globalProperties["isDfa"]:
             self.showMessage("Error!", "Ya existe una transicion con este valor!")
@@ -375,6 +404,19 @@ class Ui_MainWindow(object):
         if not origin or not destination or not transitionN:
             self.showMessage("Error!", "Insuficiente informacion para eliminar una transicion!")
             return
+        if globalProperties["isPda"]:
+            pop = QInputDialog.getText(self.drawArea, "Ingrese Valor Pop", "Ingrese el valor de Pop:", QLineEdit.Normal, "")
+            if pop[1]:
+                push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+                if push[1]:
+                    transitionN = (pop[0], transitionN)
+                    destination = (destination, push[0])
+                else:
+                    self.showMessage("Error!", "No hay valor push definido.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor pop definido.")
+                return
         foundTransition = deleteTransition(origin, destination, transitionN)
         if not foundTransition:
             self.showMessage("Error!", "No existe esa transicion!")
@@ -388,6 +430,19 @@ class Ui_MainWindow(object):
         if not origin or not destination or not transitionN:
             self.showMessage("Error!", "Insuficiente informacion para modificar una transicion!")
             return
+        if globalProperties["isPda"]:
+            pop = QInputDialog.getText(self.drawArea, "Ingrese Valor Pop", "Ingrese el valor de Pop:", QLineEdit.Normal, "")
+            if pop[1]:
+                push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+                if push[1]:
+                    transitionN = (pop[0], transitionN)
+                    destination = (destination, push[0])
+                else:
+                    self.showMessage("Error!", "No hay valor push definido.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor pop definido.")
+                return
         values = globalProperties["transitions"].get(origin, {})
         dests = values.get(transitionN, {})
         if destination not in dests:
@@ -458,7 +513,10 @@ class Ui_MainWindow(object):
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
-                    destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
+                    if(globalProperties["isPda"]):
+                        destinationNode = next(node for node in globalProperties["nodes"] if node.name in destination)
+                    else:
+                        destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
                     p.setBrush(QBrush(QColor(255, 255, 255)))
                     if(originNode.name == destinationNode.name):
                         p.drawEllipse(originNode.pos-QPoint(25, 0), 30, 10)

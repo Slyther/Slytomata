@@ -1,3 +1,5 @@
+from Automaton import *
+
 globalProperties = {"nodes": [], "transitions": {}, "isDfa": True, "isPda": False, "nodeCount": 0, "fileURL":""}
 
 
@@ -50,13 +52,20 @@ def reduceTransitions():
         toReturn[origin] = {}
         for transitionName, destinations in transitionDict.items():
             for destination in destinations:
-                transitionList = [transitionName]
+                if globalProperties["isPda"]:
+                    transitionList = ['/'.join([','.join(transitionName), destination[1]])]
+                else:
+                    transitionList = [transitionName]
                 for tn, dts in transitionDict.items():
-                    if tn == transitionName:
+                    if tn == transitionName and not globalProperties["isPda"]:
                         continue
                     for dt in dts:
-                        if dt == destination:
-                            transitionList.append(tn)
+                        if globalProperties["isPda"]:
+                            if dt[0] == destination[0] and dt[1] != destination[1]:
+                                transitionList.append('/'.join([','.join(tn), dt[1]]))
+                        else:
+                            if dt == destination:
+                                transitionList.append(tn)
                 transitionList.sort()
                 newTransitionName = '|'.join(transitionList)
                 values = toReturn[origin].get(newTransitionName, [])
