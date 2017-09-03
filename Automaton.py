@@ -377,7 +377,7 @@ class Pushdown(Automaton):
     def __init__(self, start, finals, transitions):
         super().__init__(self, start, finals, transitions)
 
-    def evaluate(self, word, stack_start):
+    def evaluate(self, word, stack_start='Z'):
         return self._evaluate(word, [stack_start], self.start, [])
 
     def _evaluate(self, word, stack, current, snapshots):

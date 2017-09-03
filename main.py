@@ -468,7 +468,10 @@ class Ui_MainWindow(object):
             self.showMessage("Error!", "No hay estado inicial!")
             return
         word = self.chainLabel.text()
-        result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+        if globalProperties["isPda"]:
+            result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+        else:
+            result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
         self.showMessage("Resultado", str(result))
 
     def toRegex(self, event):
