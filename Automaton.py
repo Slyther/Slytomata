@@ -12,8 +12,10 @@ class Automaton:
                 result.append(origin)
             for _, destinies in transitions.items():
                 for destiny in destinies:
-                    if destiny not in result:
+                    if type(destiny) != tuple and destiny not in result:
                         result.append(destiny)
+                    elif type(destiny) == tuple and destiny[0] not in result:
+                        result.append(destiny[0])
         if self.start not in result:
             result.append(self.start)
         return result
@@ -22,8 +24,10 @@ class Automaton:
         alphabet = []
         for transition in self.transitions.values():
             for symbol in transition:
-                if symbol != "$":
+                if type(symbol) != tuple and symbol != "$":
                     alphabet.append(symbol)
+                elif type(symbol) == tuple and symbol[1] != "$":
+                    alphabet.append(symbol[1])
         return alphabet
 
     def createTransition(self, origin, destination, transitionName, isDfa):
@@ -71,7 +75,7 @@ class Automaton:
 
 class Nfa(Automaton):
     def __init__(self, start, finals, transitions):
-        super().__init__(self, start, finals, transitions)
+        super().__init__(start, finals, transitions)
 
     def emptyMoves(self, states):
         temp = list(states)
@@ -375,7 +379,7 @@ class Nfa(Automaton):
 
 class Pushdown(Automaton):
     def __init__(self, start, finals, transitions):
-        super().__init__(self, start, finals, transitions)
+        super().__init__(start, finals, transitions)
 
     def evaluate(self, word, stack_start='Z'):
         return self._evaluate(word, [stack_start], self.start, [])

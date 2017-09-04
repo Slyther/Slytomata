@@ -330,8 +330,12 @@ class Ui_MainWindow(object):
             try:
                 for _, transitionDict in globalProperties["transitions"].items():
                     for _, destinations in transitionDict.items():
-                        if node.name in destinations:
-                            raise StopIteration
+                        if all(type(x) != tuple for x in destinations):
+                            if(node.name in destinations):
+                                raise StopIteration
+                        else:
+                            if(any(node.name == x[0] for x in destinations)):
+                                raise StopIteration
                 if not node.isInitialState:
                     nodesToDelete.append(node)
             except StopIteration:
@@ -340,6 +344,7 @@ class Ui_MainWindow(object):
             n = nodesToDelete.pop()
             n.removeNode(None)
         globalProperties["isDfa"] = False
+        globalProperties["isPda"] = type(automaton) == Pushdown
         self.drawArea.update()
 
     def translateAutomaton(self):
@@ -523,7 +528,7 @@ class Ui_MainWindow(object):
                     p.setBrush(QBrush(QColor(255, 255, 255)))
                     if(originNode.name == destinationNode.name):
                         p.drawEllipse(originNode.pos-QPoint(25, 0), 30, 10)
-                        p.drawText(QPoint(originNode.pos-QPoint(65, 0)), transitionName)
+                        p.drawText(QPoint(originNode.pos-QPoint(100, 0)), transitionName)
                     else:
                         rectangle = QRectF(QPointF(originNode.pos), QPointF(destinationNode.pos))
                         x0 = rectangle.center().x()
