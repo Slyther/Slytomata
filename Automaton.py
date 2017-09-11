@@ -30,7 +30,7 @@ class Automaton:
                     alphabet.append(symbol[1])
         return alphabet
 
-    def createTransition(self, origin, destination, transitionName, isDfa):
+    def createTransition(self, origin, destination, transitionName, isDfa=False):
         values = self.transitions.get(origin, {})
         if transitionName in values and not isDfa:
             vals = values[transitionName]
@@ -381,30 +381,98 @@ class Pushdown(Automaton):
     def __init__(self, start, finals, transitions):
         super().__init__(start, finals, transitions)
 
-    def evaluate(self, word, stack_start='Z'):
-        return self._evaluate(word, [stack_start], self.start, [])
+    def evaluate(self, word, stack_start='Z', method="empty"):
+        return self._evaluate(word, [stack_start], self.start, method)
 
-    def _evaluate(self, word, stack, current, snapshots):
-        if not word and current in self.finals:
+    def _evaluate(self, word, stack, current, method="empty"):
+        print("Stack:")
+        print(stack)
+        print("Word:")
+        print(word)
+        if not word and ((method == 'empty' and not stack) or (method == 'not empty' and current in self.finals)):
             return True
-        if not stack:
-            return False
         word_input = '$'
         try:
             word_input = next(iter(word))
         except StopIteration:
             pass
         try:
-            exits = self.transitions[current][(stack[-1], word_input)]
-        except KeyError:
-            return False
+            exits = self.transitions[current][(stack[-1], word_input)] if stack else []
+        except KeyError as e:
+            exits = []
+            pass
         altered_word = '' if word_input == '$' else word[1:]
-        for destiny, push in exits.items():
+        for destiny, push in exits:
             altered_stack = stack[:-1]
             altered_stack.extend(reversed(push))
-            if self._evaluate(altered_word, altered_stack, destiny, [snapshots] + [current]):
+            if self._evaluate(altered_word, altered_stack, destiny, method):
+                return True
+        try:
+            exits = self.transitions[current][(stack[-1], "$")] if stack else []
+        except KeyError as e:
+            exits = []
+            pass
+        for destiny, push in exits:
+            altered_stack = stack[:-1]
+            altered_stack.extend(reversed(push))
+            if self._evaluate(word, altered_stack, destiny, method):
                 return True
         return False
+
+    def get_tupled_transitions(self):
+        tupled_transitions = []
+        for origin, transitionDict in self.transitions.items():
+            for transitionTuple, destinations in transitionDict.items():
+                for destination in destinations:
+                    tupled_transitions.append((origin, transitionTuple[0], transitionTuple[1], destination[0], destination[1]))
+        return tupled_transitions
+
+    def grammar(self, method="empty"):
+        grammars = []
+        if method == 'empty':
+            s1States = self.get_states()
+        else:
+            s1States = self.finals
+        for state in s1States:
+            newInput = self.start + 'Z' + state
+            grammars.append(('Z', [newInput]))
+        for (start, pop, value, destiny, push) in self.get_tupled_transitions():
+            if push == '':
+                grammars.append((start + pop + destiny, [value]))
+        import itertools
+        for (start, pop, value, destiny, push) in self.get_tupled_transitions():
+            if not push:
+                continue
+            table =  itertools.product(self.get_states(), repeat=len(push))
+            for tuple_ in table:
+                toAdd_str = ""
+                toAdd_list = []
+                toAdd_str = ('' + start + pop + str(tuple_[len(push)-1]))
+                if value != '$':
+                    toAdd_list.append(value)
+                toAdd_list.append(destiny + push[0] + str(tuple_[0]))
+                for i in range(0, len(push)-1):
+                    toAdd_list.append(str(tuple_[i]) + push[i+1] + str(tuple_[i+1]))
+                grammars.append((toAdd_str, toAdd_list))
+        return grammars
+
+def from_grammar(grammar):
+    passvariables = [g[0] for g in grammar]
+    start = 'q'
+    finals = [start]
+    transitions = {start: {}}
+    for variable, prod in grammar:
+        existing = transitions[start].get((variable, '$'), [])
+        if (start, prod) not in existing:
+            existing.append((start, prod))
+        transitions[start][(variable, '$')] = existing
+        for p in prod:
+            if p not in passvariables:
+                existing = transitions[start].get((p, p), [])
+                if (start, '') not in existing:
+                    existing.append((start, ''))
+                transitions[start][(p, p)] = existing
+    return Pushdown(start, finals, transitions)
 
 def from_regex(regex):
     regex = regex.replace(" ", "")
@@ -560,3 +628,57 @@ def with_deadend_state(automaton):
         for letter in alphabet:
             toReturn.createTransition("Deadend", "Deadend", letter, False)
     return toReturn
+
+# testPda = Pushdown("Q0", ["Q2"], {})
+# origin, (destination, push), (pop, value)
+# testPda.createTransition("Q0", ("Q0", "0Z"), ("Z", "0"))
+# testPda.createTransition("Q0", ("Q0", "1Z"), ("Z", "1"))
+# testPda.createTransition("Q0", ("Q0", "00"), ("0", "0"))
+# testPda.createTransition("Q0", ("Q0", "01"), ("1", "0"))
+# testPda.createTransition("Q0", ("Q0", "10"), ("0", "1"))
+# testPda.createTransition("Q0", ("Q0", "11"), ("1", "1"))
+# testPda.createTransition("Q0", ("Q1", "Z"), ("Z", "$"))
+# testPda.createTransition("Q0", ("Q1", "0"), ("0", "$"))
+# testPda.createTransition("Q0", ("Q1", "1"), ("1", "$"))
+# testPda.createTransition("Q1", ("Q1", ""), ("1", "1"))
+# testPda.createTransition("Q1", ("Q1", ""), ("0", "0"))
+# testPda.createTransition("Q1", ("Q2", "Z"), ("Z", "$"))
+# testPda = Pushdown("q", ["r"], {})
+# testPda.createTransition("q", ("q", "XX"), ("X", "0"))
+# testPda.createTransition("q", ("q", "XZ"), ("Z", "0"))
+# testPda.createTransition("q", ("r", ""), ("X", "1"))
+# testPda.createTransition("r", ("r", ""), ("X", "1"))
+# testPda.createTransition("r", ("r", ""), ("Z", "$"))
+# grammar = testPda.grammar("not empty")
+# for el in grammar:
+#     print(el)
+# print("---------")
+# for tuple_ in testPda.get_tupled_transitions():
+#     print(tuple_)
+# fromgrammar = from_grammar(grammar)
+# print("---------")
+# for tuple_ in fromgrammar.get_tupled_transitions():
+#     print(tuple_)
+# print("---------")
+# sgrammar = fromgrammar.grammar("not empty")
+# for el in sgrammar:
+#     print(el)
+# print(testPda.evaluate("0011000", method="not empty"))
+# print(fromgrammar.evaluate("0011000", method="not empty"))
+
+grammar = [
+    ("E", ["E", "+", "T"]),
+    ("E", ["E", "-", "T"]),
+    ("E", ["T"]),
+    ("T", ["T", "*", "F"]),
+    ("T", ["T", "/", "F"]),
+    ("T", ["F"]),
+    ("F", ["D"]),
+    ("D", ["0"]),
+    ("D", ["1"])
+]
+
+pdanew = from_grammar(grammar)
+for tuple_ in pdanew.get_tupled_transitions():
+     print(tuple_)
+print(pdanew.evaluate("1+1"))

@@ -239,6 +239,7 @@ class Ui_MainWindow(object):
                 globalProperties["fileURL"] = fileName[0]
                 return
             except Exception as e:
+                raise e
                 self.showMessage("Error!", "El archivo no se pudo cargar!")
 
     def reverse(self, event):
@@ -311,6 +312,7 @@ class Ui_MainWindow(object):
         self.loadAutomaton(automaton)
 
     def loadAutomaton(self, automaton):
+        globalProperties["isPda"] = type(automaton) == Pushdown
         states = automaton.get_states()
         while globalProperties["nodes"]:
             n = globalProperties["nodes"].pop()
@@ -344,7 +346,6 @@ class Ui_MainWindow(object):
             n = nodesToDelete.pop()
             n.removeNode(None)
         globalProperties["isDfa"] = False
-        globalProperties["isPda"] = type(automaton) == Pushdown
         self.drawArea.update()
 
     def translateAutomaton(self):
@@ -453,7 +454,20 @@ class Ui_MainWindow(object):
         if destination not in dests:
             self.showMessage("Error!", "No existe una transicion con este valor!")
             return
-        text = QInputDialog.getText(self.drawArea, "Modificar Transicion" + transitionN, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
+        text = QInputDialog.getText(self.drawArea, "Modificar Transicion" + transitionN[1] if type(transitionN) == tuple else transitionN, "Ingrese nuevo nombre:", QLineEdit.Normal, "")
+        if globalProperties["isPda"]:
+            pop = QInputDialog.getText(self.drawArea, "Ingrese Valor Pop", "Ingrese el valor de Pop:", QLineEdit.Normal, "")
+            if pop[1]:
+                push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+                if push[1]:
+                    transitionN = (pop[0], transitionN)
+                    destination = (destination, push[0])
+                else:
+                    self.showMessage("Error!", "No hay valor push definido.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor pop definido.")
+                return
         if text[1]:
             if text[0] in values:
                 self.showMessage("Error!", 'Ya existe una transicion con ese nombre!')
