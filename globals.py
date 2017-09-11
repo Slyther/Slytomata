@@ -61,7 +61,7 @@ def reduceTransitions():
                         continue
                     for dt in dts:
                         if globalProperties["isPda"]:
-                            if (dt[0] == destination[0] and dt[1] != destination[1]) or (dt[0] != destination[0] and dt[1] == destination[1]):
+                            if (dt[0] == destination[0] and dt[1] != destination[1]) or (dt == destination and tn != transitionName):
                                 transitionList.append('/'.join([','.join(tn), dt[1]]))
                         else:
                             if dt == destination:

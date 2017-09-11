@@ -382,13 +382,9 @@ class Pushdown(Automaton):
         super().__init__(start, finals, transitions)
 
     def evaluate(self, word, stack_start='Z', method="empty"):
-        return self._evaluate(word, [stack_start], self.start, method)
+        return self._evaluate(word, [stack_start], self.start, method, word)
 
-    def _evaluate(self, word, stack, current, method="empty"):
-        print("Stack:")
-        print(stack)
-        print("Word:")
-        print(word)
+    def _evaluate(self, word, stack, current, method="empty", originalWord=""):
         if not word and ((method == 'empty' and not stack) or (method == 'not empty' and current in self.finals)):
             return True
         word_input = '$'
@@ -405,7 +401,7 @@ class Pushdown(Automaton):
         for destiny, push in exits:
             altered_stack = stack[:-1]
             altered_stack.extend(reversed(push))
-            if self._evaluate(altered_word, altered_stack, destiny, method):
+            if len(originalWord) >= len(altered_stack) and  self._evaluate(altered_word, altered_stack, destiny, method, originalWord):
                 return True
         try:
             exits = self.transitions[current][(stack[-1], "$")] if stack else []
@@ -415,7 +411,7 @@ class Pushdown(Automaton):
         for destiny, push in exits:
             altered_stack = stack[:-1]
             altered_stack.extend(reversed(push))
-            if self._evaluate(word, altered_stack, destiny, method):
+            if len(originalWord) >= len(altered_stack) and self._evaluate(word, altered_stack, destiny, method, originalWord):
                 return True
         return False
 
@@ -643,13 +639,14 @@ def with_deadend_state(automaton):
 # testPda.createTransition("Q1", ("Q1", ""), ("1", "1"))
 # testPda.createTransition("Q1", ("Q1", ""), ("0", "0"))
 # testPda.createTransition("Q1", ("Q2", "Z"), ("Z", "$"))
+
 # testPda = Pushdown("q", ["r"], {})
 # testPda.createTransition("q", ("q", "XX"), ("X", "0"))
 # testPda.createTransition("q", ("q", "XZ"), ("Z", "0"))
 # testPda.createTransition("q", ("r", ""), ("X", "1"))
 # testPda.createTransition("r", ("r", ""), ("X", "1"))
 # testPda.createTransition("r", ("r", ""), ("Z", "$"))
-# grammar = testPda.grammar("not empty")
+# grammar = testPda.grammar()
 # for el in grammar:
 #     print(el)
 # print("---------")
@@ -660,25 +657,25 @@ def with_deadend_state(automaton):
 # for tuple_ in fromgrammar.get_tupled_transitions():
 #     print(tuple_)
 # print("---------")
-# sgrammar = fromgrammar.grammar("not empty")
+# sgrammar = fromgrammar.grammar()
 # for el in sgrammar:
 #     print(el)
-# print(testPda.evaluate("0011000", method="not empty"))
-# print(fromgrammar.evaluate("0011000", method="not empty"))
+# print(testPda.evaluate("0011"))
+# print(fromgrammar.evaluate("0011"))
 
 grammar = [
-    ("E", ["E", "+", "T"]),
-    ("E", ["E", "-", "T"]),
-    ("E", ["T"]),
+    ("Z", ["Z", "+", "T"]),
+    ("Z", ["Z", "-", "T"]),
+    ("Z", ["T"]),
     ("T", ["T", "*", "F"]),
     ("T", ["T", "/", "F"]),
     ("T", ["F"]),
-    ("F", ["D"]),
-    ("D", ["0"]),
-    ("D", ["1"])
+    ("F", ["digit"]),
+    ("digit", ["0"]),
+    ("digit", ["1"])
 ]
 
 pdanew = from_grammar(grammar)
 for tuple_ in pdanew.get_tupled_transitions():
      print(tuple_)
-print(pdanew.evaluate("1+1"))
+print(pdanew.evaluate("1+1+1/0/0*1*1-0+1-0-1-1-1-1-1"))
