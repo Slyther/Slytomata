@@ -53,7 +53,10 @@ def reduceTransitions():
         for transitionName, destinations in transitionDict.items():
             for destination in destinations:
                 if globalProperties["isPda"]:
-                    transitionList = ['/'.join([','.join(transitionName), destination[1]])]
+                    try:
+                        transitionList = ['/'.join([','.join(transitionName), destination[1] if type(destination[1]) != list else destination[1][0] ])]
+                    except Exception as e:
+                        raise
                 else:
                     transitionList = [transitionName]
                 for tn, dts in transitionDict.items():
@@ -62,7 +65,7 @@ def reduceTransitions():
                     for dt in dts:
                         if globalProperties["isPda"]:
                             if (dt[0] == destination[0] and dt[1] != destination[1]) or (dt == destination and tn != transitionName):
-                                transitionList.append('/'.join([','.join(tn), dt[1]]))
+                                transitionList.append('/'.join([','.join(tn), dt[1] if type(dt[1]) != list else dt[1][0]]))
                         else:
                             if dt == destination:
                                 transitionList.append(tn)
@@ -72,3 +75,9 @@ def reduceTransitions():
                 values.append(destination)
                 toReturn[origin][newTransitionName] = values
     return toReturn
+
+def polishGrammar(grammar):
+    toReturn = []
+    for el in grammar:
+        toReturn.append('->'.join([el[0], ' '.join(el[1])]))
+    return '\n'.join(toReturn)

@@ -667,15 +667,13 @@ grammar = [
     ("Z", ["Z", "+", "T"]),
     ("Z", ["Z", "-", "T"]),
     ("Z", ["T"]),
-    ("T", ["T", "*", "F"]),
-    ("T", ["T", "/", "F"]),
     ("T", ["F"]),
     ("F", ["digit"]),
     ("digit", ["0"]),
     ("digit", ["1"])
 ]
 
-pdanew = from_grammar(grammar)
-for tuple_ in pdanew.get_tupled_transitions():
-     print(tuple_)
-print(pdanew.evaluate("1+1+1/0/0*1*1-0+1-0-1-1-1-1-1"))
+# pdanew = from_grammar(grammar)
+# for tuple_ in pdanew.get_tupled_transitions():
+#      print(tuple_)
+# print(pdanew.evaluate("1+1+1/0/0*1*1-0+1-0-1-1-1-1-1"))

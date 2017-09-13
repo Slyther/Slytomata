@@ -161,6 +161,12 @@ class Ui_MainWindow(object):
             action6 = QAction("Modo Tradicional", self.drawArea)
             action6.triggered.connect(self.togglePda)
             contextMenu.addAction(action6)
+            action7 = QAction("Mostrar Gramatica", self.drawArea)
+            action7.triggered.connect(self.asGrammar)
+            contextMenu.addAction(action7)
+            action8 = QAction("PDA de Gramatica", self.drawArea)
+            action8.triggered.connect(self.fromGrammar)
+            contextMenu.addAction(action8)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
     def new_start(self, event):
@@ -301,6 +307,39 @@ class Ui_MainWindow(object):
         globalProperties["isDfa"] = False
         globalProperties["isPda"] = not globalProperties["isPda"]
         self.drawArea.update()
+
+    def fromGrammar(self, event):
+        text = QInputDialog.getText(self.drawArea, "Gramatica", "Ingrese gramatica:", QLineEdit.Normal, "")
+        import ast
+        self.loadAutomaton(from_grammar(ast.literal_eval(text[0])))
+
+    def asGrammar(self, event):
+        finals = list(node.name for node in globalProperties["nodes"] if node.isAcceptanceState)
+        if not finals:
+            self.showMessage("Error!", "No hay estados de aceptacion!")
+            return
+        try:
+            initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
+        except StopIteration:
+            self.showMessage("Error!", "No hay estado inicial!")
+            return
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Pila Vacia o No?")
+        msgBox.setText("Pila Vacia o No?")
+        msgBox.addButton(QPushButton('Pila Vacia'), QMessageBox.YesRole)
+        msgBox.addButton(QPushButton('No'), QMessageBox.NoRole)
+        msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
+        msgBox.exec_()
+        response = msgBox.buttonRole(msgBox.clickedButton())
+        if response == QMessageBox.RejectRole:
+            return
+        if response == QMessageBox.YesRole:
+            result = Pushdown(initial, finals, globalProperties["transitions"]).grammar("empty")
+        if response == QMessageBox.NoRole:
+            result = Pushdown(initial, finals, globalProperties["transitions"]).grammar("not empty")
+        import subprocess
+        subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
+        self.showMessage("Resultado", polishGrammar(result))
 
     def collapseAutomaton(self, event):
         try:
@@ -488,7 +527,20 @@ class Ui_MainWindow(object):
             return
         word = self.chainLabel.text()
         if globalProperties["isPda"]:
-            result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Pila Vacia o No?")
+            msgBox.setText("Pila Vacia o No?")
+            msgBox.addButton(QPushButton('Pila Vacia'), QMessageBox.YesRole)
+            msgBox.addButton(QPushButton('No'), QMessageBox.NoRole)
+            msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
+            msgBox.exec_()
+            response = msgBox.buttonRole(msgBox.clickedButton())
+            if response == QMessageBox.RejectRole:
+                return
+            if response == QMessageBox.YesRole:
+                result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+            if response == QMessageBox.NoRole:
+                result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word, method="not empty")
         else:
             result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
         self.showMessage("Resultado", str(result))

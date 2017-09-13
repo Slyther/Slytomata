@@ -104,3 +104,5 @@ class Node(QtWidgets.QLabel):
         globalProperties["nodes"] = [node for node in globalProperties["nodes"] if node.name != self.name]
         self.parentWidget().update()
         self.hide()
+
+    
