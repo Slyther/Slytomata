@@ -137,36 +137,44 @@ class Ui_MainWindow(object):
 
     def showContextMenu(self, pos):
         contextMenu = QMenu("Context Menu", self.drawArea)
-        if not globalProperties["isPda"]:
-            action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
-            action1.triggered.connect(self.switchAutomatonType)
-            contextMenu.addAction(action1)
-            action0 = QAction("Modo PDA", self.drawArea)
-            action0.triggered.connect(self.togglePda)
-            contextMenu.addAction(action0)
-            if not globalProperties["isDfa"]:
-                action2 = QAction("Colapsar NFA", self.drawArea)
-                action2.triggered.connect(self.collapseAutomaton)
-                contextMenu.addAction(action2)
-            action3 = QAction("Obtener Reflexion", self.drawArea)
-            action3.triggered.connect(self.reverse)
-            contextMenu.addAction(action3)
-            action4 = QAction("Obtener Complemento", self.drawArea)
-            action4.triggered.connect(self.complement)
-            contextMenu.addAction(action4)
-            action5 = QAction("Minimizar", self.drawArea)
-            action5.triggered.connect(self.minimize)
-            contextMenu.addAction(action5)
+        if not globalProperties["isTuring"]:
+            if not globalProperties["isPda"]:
+                action1 = QAction("Cambiar a NFA" if globalProperties["isDfa"] else "Cambiar a DFA", self.drawArea)
+                action1.triggered.connect(self.switchAutomatonType)
+                contextMenu.addAction(action1)
+                action0 = QAction("Modo PDA", self.drawArea)
+                action0.triggered.connect(self.togglePda)
+                contextMenu.addAction(action0)
+                action01 = QAction("Modo Turing", self.drawArea)
+                action01.triggered.connect(self.toggleTuring)
+                contextMenu.addAction(action01)
+                if not globalProperties["isDfa"]:
+                    action2 = QAction("Colapsar NFA", self.drawArea)
+                    action2.triggered.connect(self.collapseAutomaton)
+                    contextMenu.addAction(action2)
+                action3 = QAction("Obtener Reflexion", self.drawArea)
+                action3.triggered.connect(self.reverse)
+                contextMenu.addAction(action3)
+                action4 = QAction("Obtener Complemento", self.drawArea)
+                action4.triggered.connect(self.complement)
+                contextMenu.addAction(action4)
+                action5 = QAction("Minimizar", self.drawArea)
+                action5.triggered.connect(self.minimize)
+                contextMenu.addAction(action5)
+            else:
+                action6 = QAction("Modo Tradicional", self.drawArea)
+                action6.triggered.connect(self.togglePda)
+                contextMenu.addAction(action6)
+                action7 = QAction("Mostrar Gramatica", self.drawArea)
+                action7.triggered.connect(self.asGrammar)
+                contextMenu.addAction(action7)
+                action8 = QAction("PDA de Gramatica", self.drawArea)
+                action8.triggered.connect(self.fromGrammar)
+                contextMenu.addAction(action8)
         else:
-            action6 = QAction("Modo Tradicional", self.drawArea)
-            action6.triggered.connect(self.togglePda)
-            contextMenu.addAction(action6)
-            action7 = QAction("Mostrar Gramatica", self.drawArea)
-            action7.triggered.connect(self.asGrammar)
-            contextMenu.addAction(action7)
-            action8 = QAction("PDA de Gramatica", self.drawArea)
-            action8.triggered.connect(self.fromGrammar)
-            contextMenu.addAction(action8)
+            action9 = QAction("Modo Tradicional", self.drawArea)
+            action9.triggered.connect(self.toggleTuring)
+            contextMenu.addAction(action9)
         contextMenu.exec(self.drawArea.mapToGlobal(pos))
 
     def new_start(self, event):
@@ -174,6 +182,8 @@ class Ui_MainWindow(object):
             n = globalProperties["nodes"].pop()
             n.removeNode(None)
         globalProperties["isDfa"] = True
+        globalProperties["isPda"] = False
+        globalProperties["isTuring"] = False
         globalProperties["nodeCount"] = 0
         globalProperties["transitions"] = {}
         globalProperties["fileURL"] = ""
@@ -297,7 +307,7 @@ class Ui_MainWindow(object):
             msgBox = QMessageBox()
             msgBox.setWindowTitle("Que accion desea tomar?")
             msgBox.setText("Actualmente hay un automata cargado, que se perderia. Que desea hacer?")
-            msgBox.addButton(QPushButton('Cambiar a PDA'), QMessageBox.YesRole)
+            msgBox.addButton(QPushButton('Cambiar'), QMessageBox.YesRole)
             msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
             msgBox.exec_()
             response = msgBox.buttonRole(msgBox.clickedButton())
@@ -306,6 +316,22 @@ class Ui_MainWindow(object):
         self.new_start(None)
         globalProperties["isDfa"] = False
         globalProperties["isPda"] = not globalProperties["isPda"]
+        self.drawArea.update()
+
+    def toggleTuring(self, event):
+        if(globalProperties["nodes"]):
+            msgBox = QMessageBox()
+            msgBox.setWindowTitle("Que accion desea tomar?")
+            msgBox.setText("Actualmente hay un automata cargado, que se perderia. Que desea hacer?")
+            msgBox.addButton(QPushButton('Cambiar'), QMessageBox.YesRole)
+            msgBox.addButton(QPushButton('Cancelar'), QMessageBox.RejectRole)
+            msgBox.exec_()
+            response = msgBox.buttonRole(msgBox.clickedButton())
+            if response == QMessageBox.RejectRole:
+                return
+        self.new_start(None)
+        globalProperties["isDfa"] = False
+        globalProperties["isTuring"] = not globalProperties["isTuring"]
         self.drawArea.update()
 
     def fromGrammar(self, event):
@@ -337,8 +363,8 @@ class Ui_MainWindow(object):
             result = Pushdown(initial, finals, globalProperties["transitions"]).grammar("empty")
         if response == QMessageBox.NoRole:
             result = Pushdown(initial, finals, globalProperties["transitions"]).grammar("not empty")
-        import subprocess
-        subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
+        # import subprocess
+        # subprocess.run(['clip.exe'], input=str(result).strip().encode('utf-8'), check=True)
         self.showMessage("Resultado", polishGrammar(result))
 
     def collapseAutomaton(self, event):
@@ -352,6 +378,7 @@ class Ui_MainWindow(object):
 
     def loadAutomaton(self, automaton):
         globalProperties["isPda"] = type(automaton) == Pushdown
+        globalProperties["isTuring"] = type(automaton) == Turing
         states = automaton.get_states()
         while globalProperties["nodes"]:
             n = globalProperties["nodes"].pop()
@@ -433,6 +460,18 @@ class Ui_MainWindow(object):
             else:
                 self.showMessage("Error!", "No hay valor pop definido.")
                 return
+        elif globalProperties["isTuring"]:
+            push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+            if push[1]:
+                direction = QInputDialog.getText(self.drawArea, "Ingrese Direccion", "Ingrese el valor de Direccion:", QLineEdit.Normal, "")
+                if direction[1]:
+                    destination = (destination, push[0], direction[0])
+                else:
+                    self.showMessage("Error!", "No hay valor direccion.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor push.")
+                return
         values = globalProperties["transitions"].get(origin, {})
         if transitionN in values and globalProperties["isDfa"]:
             self.showMessage("Error!", "Ya existe una transicion con este valor!")
@@ -462,6 +501,18 @@ class Ui_MainWindow(object):
             else:
                 self.showMessage("Error!", "No hay valor pop definido.")
                 return
+        elif globalProperties["isTuring"]:
+            push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+            if push[1]:
+                direction = QInputDialog.getText(self.drawArea, "Ingrese Direccion", "Ingrese el valor de Direccion:", QLineEdit.Normal, "")
+                if direction[1]:
+                    destination = (destination, push[0], direction[0])
+                else:
+                    self.showMessage("Error!", "No hay valor direccion.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor push.")
+                return
         foundTransition = deleteTransition(origin, destination, transitionN)
         if not foundTransition:
             self.showMessage("Error!", "No existe esa transicion!")
@@ -488,6 +539,18 @@ class Ui_MainWindow(object):
             else:
                 self.showMessage("Error!", "No hay valor pop definido.")
                 return
+        elif globalProperties["isTuring"]:
+            push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+            if push[1]:
+                direction = QInputDialog.getText(self.drawArea, "Ingrese Direccion", "Ingrese el valor de Direccion:", QLineEdit.Normal, "")
+                if direction[1]:
+                    destination = (destination, push[0], direction[0])
+                else:
+                    self.showMessage("Error!", "No hay valor direccion.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor push.")
+                return
         values = globalProperties["transitions"].get(origin, {})
         dests = values.get(transitionN, {})
         if destination not in dests:
@@ -506,6 +569,18 @@ class Ui_MainWindow(object):
                     return
             else:
                 self.showMessage("Error!", "No hay valor pop definido.")
+                return
+        elif globalProperties["isTuring"]:
+            push = QInputDialog.getText(self.drawArea, "Ingrese Valor Push", "Ingrese el valor de Push:", QLineEdit.Normal, "")
+            if push[1]:
+                direction = QInputDialog.getText(self.drawArea, "Ingrese Direccion", "Ingrese el valor de Direccion:", QLineEdit.Normal, "")
+                if direction[1]:
+                    destination = (destination, push[0], direction[0])
+                else:
+                    self.showMessage("Error!", "No hay valor direccion.")
+                    return
+            else:
+                self.showMessage("Error!", "No hay valor push.")
                 return
         if text[1]:
             if text[0] in values:
@@ -542,7 +617,10 @@ class Ui_MainWindow(object):
             if response == QMessageBox.NoRole:
                 result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word, method="not empty")
         else:
-            result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+            if not globalProperties["isTuring"]:
+                result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
+            else:
+                result = Turing(initial, finals, copy.deepcopy(globalProperties["transitions"])).evaluate(word)
         self.showMessage("Resultado", str(result))
 
     def toRegex(self, event):
@@ -587,7 +665,7 @@ class Ui_MainWindow(object):
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
-                    if(globalProperties["isPda"]):
+                    if(globalProperties["isPda"] or destination["isTuring"]):
                         destinationNode = next(node for node in globalProperties["nodes"] if node.name in destination)
                     else:
                         destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)

@@ -452,6 +452,30 @@ class Pushdown(Automaton):
                 grammars.append((toAdd_str, toAdd_list))
         return grammars
 
+class Turing(Automaton):
+    def __init__(self, start, finals, transitions):
+        super().__init__(start, finals, transitions)
+    
+    def evaluate(self, tape):
+        tapeDict = {}
+        for i, item in enumerate(tape):
+            tapeDict[i] = item
+        current = self.start
+        pointer = 0
+        while current:
+            if current in self.finals:
+                return (True, tape)
+            pop = tapeDict.get(pointer, 'B')
+            (destiny, push, direction) = self.transitions.get(current, {}).get(pop, (None, None, None))
+            if destiny:
+                current = destiny
+                tapeDict[pointer] = push
+                if direction == 'R':
+                    pointer += 1
+                elif direction == 'L':
+                    pointer -= 1
+        return (False, None)
+
 def from_grammar(grammar):
     passvariables = [g[0] for g in grammar]
     start = 'q'

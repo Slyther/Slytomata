@@ -1,6 +1,6 @@
 from Automaton import *
 
-globalProperties = {"nodes": [], "transitions": {}, "isDfa": True, "isPda": False, "nodeCount": 0, "fileURL":""}
+globalProperties = {"nodes": [], "transitions": {}, "isDfa": True, "isPda": False, "isTuring": False, "nodeCount": 0, "fileURL":""}
 
 
 def createTransition(origin, destination, transitionName):
@@ -56,16 +56,24 @@ def reduceTransitions():
                     try:
                         transitionList = ['/'.join([','.join(transitionName), destination[1] if type(destination[1]) != list else destination[1][0] ])]
                     except Exception as e:
-                        raise
+                        pass
+                elif globalProperties["isTuring"]:
+                    try:
+                        transitionList = ['/'.join([transitionName, destination[1], destination[2]])]
+                    except Exception as e:
+                        pass
                 else:
                     transitionList = [transitionName]
                 for tn, dts in transitionDict.items():
-                    if tn == transitionName and not globalProperties["isPda"]:
+                    if tn == transitionName and not (globalProperties["isPda"] or globalProperties["isTuring"]):
                         continue
                     for dt in dts:
                         if globalProperties["isPda"]:
                             if (dt[0] == destination[0] and dt[1] != destination[1]) or (dt == destination and tn != transitionName):
                                 transitionList.append('/'.join([','.join(tn), dt[1] if type(dt[1]) != list else dt[1][0]]))
+                        elif globalProperties["isTuring"]:
+                            if (dt[0] == destination[0] and (dt[1] != destination[1]) or dt[2] != destination[2]) or (dt == destination and tn != transitionName):
+                                transitionList = ['/'.join([tn, dt[1], dt[2]])]
                         else:
                             if dt == destination:
                                 transitionList.append(tn)
