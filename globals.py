@@ -22,18 +22,18 @@ def deleteTransition(origin, destination, transitionName):
     try:
         if transitionName == "":
             for trans, _ in globalProperties["transitions"][origin].items():
-                globalProperties["transitions"][origin][trans] = [x for x in globalProperties["transitions"][origin][trans] if x != destination]
+                globalProperties["transitions"][origin][trans] = [x for x in globalProperties["transitions"][origin][trans] if (x != destination if type(x) != tuple else destination not in x)]
                 globalProperties["transitions"][origin] = dict((x, v) for x, v in globalProperties["transitions"][origin].items() if v)
         elif destination == "":
-            globalProperties["transitions"][origin] = dict((key, value) for key, value in globalProperties["transitions"][origin] if value and transitionName != key)
+            globalProperties["transitions"][origin] = dict((key, value) for key, value in globalProperties["transitions"][origin] if value and (transitionName != key if type(key) != tuple else transitionName not in key))
         elif origin == "":
             for orig, _ in globalProperties["transitions"].items():
-                globalProperties["transitions"][orig][transitionName] = [x for x in globalProperties["transitions"][orig][transitionName] if x != destination]
+                globalProperties["transitions"][orig][transitionName] = [x for x in globalProperties["transitions"][orig][transitionName] if (x != destination if type(x) != tuple else destination not in x)]
                 globalProperties["transitions"][orig] = dict((x, v) for x, v in globalProperties["transitions"][orig].items() if v)
         else:
             if destination not in globalProperties["transitions"][origin][transitionName]:
                 return False
-            globalProperties["transitions"][origin][transitionName] = [x for x in globalProperties["transitions"][origin][transitionName] if x != destination]
+            globalProperties["transitions"][origin][transitionName] = [x for x in globalProperties["transitions"][origin][transitionName] if (x != destination if type(x) != tuple else destination not in x)]
             globalProperties["transitions"][origin] = dict((x, v) for x, v in globalProperties["transitions"][origin].items() if v)
         globalProperties["transitions"] = dict((x, v) for x, v in globalProperties["transitions"].items() if v)
         return True
@@ -72,8 +72,8 @@ def reduceTransitions():
                             if (dt[0] == destination[0] and dt[1] != destination[1]) or (dt == destination and tn != transitionName):
                                 transitionList.append('/'.join([','.join(tn), dt[1] if type(dt[1]) != list else dt[1][0]]))
                         elif globalProperties["isTuring"]:
-                            if (dt[0] == destination[0] and (dt[1] != destination[1]) or dt[2] != destination[2]) or (dt == destination and tn != transitionName):
-                                transitionList = ['/'.join([tn, dt[1], dt[2]])]
+                            if (dt[0] == destination[0] and ((dt[1] != destination[1]) or dt[2] != destination[2])) or (dt == destination and tn != transitionName):
+                                transitionList.append('/'.join([tn, dt[1], dt[2]]))
                         else:
                             if dt == destination:
                                 transitionList.append(tn)

@@ -298,7 +298,10 @@ class Ui_MainWindow(object):
         self.loadAutomaton(current_automaton)
 
     def switchAutomatonType(self, event):
+        print(globalProperties["isDfa"])
+        print(not globalProperties["isDfa"])
         globalProperties["isDfa"] = not globalProperties["isDfa"]
+        print(globalProperties["isDfa"])
         self.translateAutomaton()
         self.drawArea.update()
 

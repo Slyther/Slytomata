@@ -16,7 +16,7 @@ class Automaton:
                         result.append(destiny)
                     elif type(destiny) == tuple and destiny[0] not in result:
                         result.append(destiny[0])
-        if self.start not in result:
+        if self.start not in result and self.start != None:
             result.append(self.start)
         return result
 
@@ -455,7 +455,7 @@ class Pushdown(Automaton):
 class Turing(Automaton):
     def __init__(self, start, finals, transitions):
         super().__init__(start, finals, transitions)
-    
+
     def evaluate(self, tape):
         tapeDict = {}
         for i, item in enumerate(tape):
@@ -466,14 +466,14 @@ class Turing(Automaton):
             if current in self.finals:
                 return (True, tape)
             pop = tapeDict.get(pointer, 'B')
-            (destiny, push, direction) = self.transitions.get(current, {}).get(pop, (None, None, None))
-            if destiny:
-                current = destiny
+            (destiny, push, direction) = next(iter(self.transitions.get(current, {}).get(pop, [(None, None, None)])))
+            if destiny != None:
                 tapeDict[pointer] = push
                 if direction == 'R':
                     pointer += 1
                 elif direction == 'L':
                     pointer -= 1
+            current = destiny
         return (False, None)
 
 def from_grammar(grammar):
