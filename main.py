@@ -379,6 +379,7 @@ class Ui_MainWindow(object):
     def loadAutomaton(self, automaton):
         globalProperties["isPda"] = type(automaton) == Pushdown
         globalProperties["isTuring"] = type(automaton) == Turing
+        print(type(automaton) == Turing)
         states = automaton.get_states()
         while globalProperties["nodes"]:
             n = globalProperties["nodes"].pop()
