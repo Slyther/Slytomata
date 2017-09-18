@@ -203,7 +203,12 @@ class Ui_MainWindow(object):
                     initial = next(node.name for node in globalProperties["nodes"] if node.isInitialState)
                 except StopIteration:
                     initial = None
-                result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"])) if not globalProperties["isPda"] else Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"]))
+                if globalProperties["isPda"]:
+                    result = Pushdown(initial, finals, copy.deepcopy(globalProperties["transitions"]))
+                elif globalProperties["isTuring"]:
+                    result = Turing(initial, finals, copy.deepcopy(globalProperties["transitions"]))
+                else:
+                    result = Nfa(initial, finals, copy.deepcopy(globalProperties["transitions"]))
                 pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             self.saveToFileAs(event)
