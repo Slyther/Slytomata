@@ -665,7 +665,7 @@ class Ui_MainWindow(object):
             for transitionName, destinations in transitionDict.items():
                 for destination in destinations:
                     originNode = next(node for node in globalProperties["nodes"] if node.name == origin)
-                    if(globalProperties["isPda"] or destination["isTuring"]):
+                    if(globalProperties["isPda"] or globalProperties["isTuring"]):
                         destinationNode = next(node for node in globalProperties["nodes"] if node.name in destination)
                     else:
                         destinationNode = next(node for node in globalProperties["nodes"] if node.name == destination)
